@@ -1,0 +1,1 @@
+`Notebook` sebaiknya digunakan untuk `analisis dan eksperimen`, sedangkan proses `mengambil data` adalah bagian dari `data pipeline/reproducibility -> src`.
