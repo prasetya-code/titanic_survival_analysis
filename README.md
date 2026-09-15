@@ -40,6 +40,19 @@ Kaggle Titanic Dataset
 | Cabin       | Cabin information           | Text        | Feature    |
 | Embarked    | Port of embarkation         | Categorical | Feature    |
 
+
+## Data Quality Assessment
+
+contoh:
+
+| Check       | Finding          | Impact | Treatment             |
+| ----------- | ---------------- | ------ | --------------------- |
+| Age         | Missing values   | Medium | Imputation            |
+| Cabin       | High missingness | High   | Feature extraction    |
+| Embarked    | Few missing      | Low    | Mode                  |
+| PassengerId | Unique           | None   | Identifier only       |
+| Fare        | Potential skew   | Medium | Distribution analysis |
+
 ---
 
 # Methodology
