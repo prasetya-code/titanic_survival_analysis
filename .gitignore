@@ -3,7 +3,3 @@ win_env
 .env
 
 # cache
-
-# file
-*.zip
-*.csv

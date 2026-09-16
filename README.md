@@ -18,9 +18,7 @@ Mengembangkan kerangka kerja analitis dan prediktif untuk mengidentifikasi fakto
 
 ---
 
-# Dataset
-
-Kaggle Titanic Dataset
+# Dataset Layer
 
 
 ## Data Understanding
@@ -83,12 +81,132 @@ Kaggle Submission
 
 ---
 
-# Models
+# Modeling Strategy
 
-- Logistic Regression
-- Decision Tree
-- Random Forest
-- Gradient Boosting
+Buat model benchmark
+```bash
+                    MODELING
+                       │
+        ┌──────────────┼──────────────┐
+        ▼              ▼              ▼
+     Baseline       Linear         Tree-based
+        │              │              │
+ DummyClassifier   Logistic       Decision Tree
+                    Regression     Random Forest
+                                      │
+                                      ▼
+                                Gradient Boosting
+```
+
+| Model               | CV Accuracy | Std | Notes            |
+| ------------------- | ----------: | --: | ---------------- |
+| Dummy               |         ... | ... | Baseline         |
+| Logistic Regression |         ... | ... | Interpretable    |
+| Decision Tree       |         ... | ... | Non-linear       |
+| Random Forest       |         ... | ... | Ensemble         |
+| Gradient Boosting   |         ... | ... | Strong benchmark |
+
+
+# Validation Strategy
+
+Ini salah satu bagian yang sangat bagus untuk menaikkan kualitas portfolio.
+
+```bash
+Train Dataset
+      │
+      ▼
+Stratified Cross Validation
+      │
+      ├── Fold 1
+      ├── Fold 2
+      ├── Fold 3
+      ├── Fold 4
+      └── Fold 5
+             │
+             ▼
+       Mean Performance
+             +
+       Performance Variance
+```
+
+Kemudian bahas:
+```bash
+accuracy
+precision
+recall
+F1
+confusion matrix
+```
+
+Walaupun Kaggle menggunakan accuracy, portfolio Anda sebaiknya tidak berhenti di accuracy.
+
+
+# Model Explainability
+
+Pertanyaan: 
+> Why does the model make this prediction?
+
+gunakan:
+```bash
+Feature Importance
+Permutation Importance
+SHAP
+Partial Dependence
+```
+
+
+Jika menggunakan SHAP, misalnya:
+```bash
+                MODEL
+                  │
+                  ▼
+             SHAP VALUES
+                  │
+       ┌──────────┼──────────┐
+       ▼          ▼          ▼
+      Sex       Pclass      Fare
+       │          │          │
+       └──────────┼──────────┘
+                  ▼
+             Prediction
+```
+
+
+Kemudian jelaskan secara bisnis/analitis.
+
+
+# Error Analysis
+
+Ini bagian yang sering tidak dilakukan oleh pemula. Tanyakan:
+> Which passengers did the model get wrong?
+
+
+Pisahkan:
+```bash
+True Positive
+True Negative
+False Positive
+False Negative
+```
+
+
+Kemudian cari karakteristik error:
+```bash
+False Negative
+↓
+Who were they?
+↓
+Age?
+Sex?
+Pclass?
+Family?
+Fare?
+```
+
+Dari sini Anda dapat menemukan:
+> “Model memiliki kesulitan mengidentifikasi kelompok penumpang tertentu.”
+
+Itu jauh lebih bernilai daripada sekadar score.
 
 ---
 
@@ -107,27 +225,46 @@ Models were evaluated using:
 
 # Feature Engineering
 
-Key engineered features:
+Di portfolio senior, tunjukkan reasoning, bukan hanya kode
 
-- FamilySize
-- IsAlone
-- Title
-- HasCabin
-- Deck
-- FamilyCategory
+```bash
+RAW DATA
+   │
+   ├── Name
+   │      ↓
+   │    Title
+   │
+   ├── SibSp + Parch
+   │      ↓
+   │    FamilySize
+   │      ↓
+   │    IsAlone
+   │
+   ├── Cabin
+   │      ↓
+   │    HasCabin
+   │
+   └── Ticket
+          ↓
+       Group-related features
+```
+
+| Raw Feature   | Engineered Feature | Reason                                 |
+| ------------- | ------------------ | -------------------------------------- |
+| Name          | Title              | Capture social/demographic information |
+| SibSp + Parch | FamilySize         | Represent household group              |
+| FamilySize    | IsAlone            | Identify solo travelers                |
+| Cabin         | HasCabin           | Preserve cabin availability signal     |
+| Fare          | FarePerPerson      | Normalize group ticket cost            |
 
 ---
 
-# Explainability
+# Insight Layer
 
-Model interpretation was performed using:
+Saya sarankan pisahkan EDA dan Insights.
 
-- Feature Importance
-- Permutation Importance
 
----
-
-Key Findings (insight after all process)
+## Key Findings
 
 []
 
@@ -157,211 +294,40 @@ SHAP
 
 --- 
 
-# Layer 1 — Data
+# Executive Summary
 
-```text
-Raw Data
-   ↓
-Data Quality
-   ↓
-Clean Data
-```
+Buat satu halaman:
 
-# Layer 2 — Analytics
-
+## Executive Summary
 ```bash
-EDA
-   ↓
-Hypothesis
-   ↓
-Insight
-```
+Objective
+─────────
+What are we trying to understand/predict?
 
-# Layer 3 — Machine Learning
+Key Findings
+─────────────
+1. ...
+2. ...
+3. ...
 
-```bash
-Feature Engineering
-   ↓
-Baseline
-   ↓
-Benchmark
-   ↓
-Validation
-   ↓
-Optimization
-   ↓
-Explainability
-```
+Model Performance
+──────────────────
+Best Model: ...
+CV Accuracy: ...
 
-# Layer 4 — Business Communication
+Key Drivers
+────────────
+1. ...
+2. ...
+3. ...
 
-```bash
-Executive Summary
-        ↓
-Dashboard
-        ↓
+Limitations
+───────────
+...
+
 Recommendation
-        ↓
-GitHub Portfolio
+──────────────
+...
 ```
 
-
-# Hal yang Saya Anggap "Senior-Level"
-
-## ketika menemukan missing value
-
-jangan
-```bash
-Missing value
-↓
-fillna()
-↓
-model
-```
-
-tetapi
-```bash
-Missing Value
-↓
-Why is it missing?
-↓
-What is the business meaning?
-↓
-Potential impact
-↓
-Treatment
-↓
-Validation
-```
-
-## ketika melakukan analisa pada model
-
-jangan
-```bash
-Random Forest accuracy = 82%
-```
-
-tetapi
-```bash
-Baseline
-      ↓
-Logistic Regression
-      ↓
-Decision Tree
-      ↓
-Random Forest
-      ↓
-Gradient Boosting
-      ↓
-Cross Validation
-      ↓
-Statistical Stability
-      ↓
-Final Model
-```
-
-## Ketika melakukan feature engineering
-
-jangan
-```bash
-Feature importance
-```
-
-tetapi
-```bash
-Feature Importance
-       ↓
-Why is it important?
-       ↓
-Does EDA support it?
-       ↓
-Is it stable?
-       ↓
-Does removing it hurt performance?
-       ↓
-Business interpretation
-```
-
-# Flow akhir pengerjaan
-
-```bash
-┌───────────────────────────────┐
-│ 1. BUSINESS PROBLEM           │
-│ Objective + Questions         │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 2. DATA UNDERSTANDING         │
-│ Schema + Data Dictionary      │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 3. DATA QUALITY               │
-│ Missing + Duplicate + Validity│
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 4. EDA                        │
-│ Pattern + Relationship        │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 5. HYPOTHESIS                 │
-│ Why does survival differ?     │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 6. FEATURE ENGINEERING        │
-│ Family + Title + Cabin        │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 7. BASELINE                   │
-│ Establish benchmark           │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 8. MODEL BENCHMARK             │
-│ LR / DT / RF / GB             │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 9. CROSS VALIDATION            │
-│ Stability + Generalization    │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 10. OPTIMIZATION              │
-│ Hyperparameter Tuning          │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 11. EXPLAINABILITY             │
-│ Importance + Permutation       │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 12. ERROR ANALYSIS             │
-│ FP / FN + Segment Analysis    │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 13. KAGGLE VALIDATION          │
-│ Final submission               │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 14. BUSINESS INSIGHT           │
-│ So What?                       │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 15. EXECUTIVE REPORT           │
-│ Decision-oriented summary      │
-└───────────────┬───────────────┘
-                ↓
-┌───────────────────────────────┐
-│ 16. DASHBOARD + GITHUB         │
-│ Professional Portfolio         │
-└───────────────────────────────┘
-```
+Orang yang membuka GitHub Anda tidak harus membaca 5 notebook untuk memahami hasilnya.

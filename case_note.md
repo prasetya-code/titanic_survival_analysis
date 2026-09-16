@@ -12,6 +12,136 @@
 
 ---
 
+# Layer Section
+
+## Layer 1 — Data
+
+```bash
+Raw Data
+   ↓
+Data Quality
+   ↓
+Clean Data
+```
+
+## Layer 2 — Analytics
+
+```bash
+EDA
+   ↓
+Hypothesis
+   ↓
+Insight
+```
+
+## Layer 3 — Machine Learning
+
+```bash
+Feature Engineering
+   ↓
+Baseline
+   ↓
+Benchmark
+   ↓
+Validation
+   ↓
+Optimization
+   ↓
+Explainability
+```
+
+## Layer 4 — Business Communication
+
+```bash
+Executive Summary
+        ↓
+Dashboard
+        ↓
+Recommendation
+        ↓
+GitHub Portfolio
+```
+
+---
+
+# Hal yang Saya Anggap "Senior-Level"
+
+## ketika menemukan missing value
+
+jangan
+```bash
+Missing value
+↓
+fillna()
+↓
+model
+```
+
+tetapi
+```bash
+Missing Value
+↓
+Why is it missing?
+↓
+What is the business meaning?
+↓
+Potential impact
+↓
+Treatment
+↓
+Validation
+```
+
+## ketika melakukan analisa pada model
+
+jangan
+```bash
+Random Forest accuracy = 82%
+```
+
+tetapi
+```bash
+Baseline
+      ↓
+Logistic Regression
+      ↓
+Decision Tree
+      ↓
+Random Forest
+      ↓
+Gradient Boosting
+      ↓
+Cross Validation
+      ↓
+Statistical Stability
+      ↓
+Final Model
+```
+
+## Ketika melakukan feature engineering
+
+jangan
+```bash
+Feature importance
+```
+
+tetapi
+```bash
+Feature Importance
+       ↓
+Why is it important?
+       ↓
+Does EDA support it?
+       ↓
+Is it stable?
+       ↓
+Does removing it hurt performance?
+       ↓
+Business interpretation
+```
+
+---
+
 # Overview
 
 Data telah dibagi menjadi dua kelompok:
@@ -60,3 +190,28 @@ Data telah dibagi menjadi dua kelompok:
   * **Parent** = ibu, ayah
   * **Child** = anak perempuan, anak laki-laki, anak tiri
   * *Catatan:* Beberapa anak hanya bepergian dengan pengasuh, sehingga untuk mereka `parch = 0`.
+
+
+# NOTEBOOKS
+
+```bash
+01_ingestion_and_raw_validation.ipynb
+│
+├── 1. Import & configuration
+├── 2. Expected schema
+├── 3. File sanity check
+├── 4. SHA256 / source version
+├── 5. Load raw CSV
+├── 6. Normalize column names
+├── 7. Validate column count & names
+├── 8. Validate data types
+├── 9. Validate row count / empty dataset
+├── 10. Missing-value report
+├── 11. Basic value sanity check
+├── 12. Raw dataset summary
+├── 13. Write Parquet
+├── 14. Ingestion metadata
+├── 15. Validate staged artifacts
+└── 16. Final ingestion report
+└── 17. Resource cleanup
+```
