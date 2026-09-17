@@ -1,0 +1,120 @@
+{
+  "dataset": "titanic",
+  "pipeline_stage": "ingestion",
+  "pipeline_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "ingestion_timestamp_utc": "2026-09-17T01:13:57.181875+00:00",
+  "source": {
+    "train": {
+      "path": "..\\data\\raw\\train.csv",
+      "size_bytes": 61194,
+      "sha256": "7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f"
+    },
+    "test": {
+      "path": "..\\data\\raw\\test.csv",
+      "size_bytes": 28629,
+      "sha256": "56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2"
+    }
+  },
+  "artifacts": {
+    "train": {
+      "path": "..\\data\\staged\\train.parquet",
+      "size_bytes": 27613,
+      "sha256": "8057e012ff35427402e0e22e1227e691a2afa78e99595ed7c5c8b5bc9110c271"
+    },
+    "test": {
+      "path": "..\\data\\staged\\test.parquet",
+      "size_bytes": 15532,
+      "sha256": "aab5bc44778f5c903fa35786c16a4849533b4a5afff20e031575745a4eb3950c"
+    }
+  },
+  "datasets": {
+    "train": {
+      "dataset": "train",
+      "rows": 891,
+      "columns": 12,
+      "column_names": [
+        "passengerid",
+        "survived",
+        "pclass",
+        "name",
+        "sex",
+        "age",
+        "sibsp",
+        "parch",
+        "ticket",
+        "fare",
+        "cabin",
+        "embarked"
+      ],
+      "schema": {
+        "passengerid": "Int64",
+        "survived": "Int64",
+        "pclass": "Int64",
+        "name": "String",
+        "sex": "String",
+        "age": "Float64",
+        "sibsp": "Int64",
+        "parch": "Int64",
+        "ticket": "String",
+        "fare": "Float64",
+        "cabin": "String",
+        "embarked": "String"
+      },
+      "estimated_size_bytes": 85871
+    },
+    "test": {
+      "dataset": "test",
+      "rows": 418,
+      "columns": 11,
+      "column_names": [
+        "passengerid",
+        "pclass",
+        "name",
+        "sex",
+        "age",
+        "sibsp",
+        "parch",
+        "ticket",
+        "fare",
+        "cabin",
+        "embarked"
+      ],
+      "schema": {
+        "passengerid": "Int64",
+        "pclass": "Int64",
+        "name": "String",
+        "sex": "String",
+        "age": "Float64",
+        "sibsp": "Int64",
+        "parch": "Int64",
+        "ticket": "String",
+        "fare": "Float64",
+        "cabin": "String",
+        "embarked": "String"
+      },
+      "estimated_size_bytes": 37256
+    }
+  },
+  "validation": {
+    "source_files": "PASS",
+    "source_sha256": "PASS",
+    "schema": "PASS",
+    "data_types": "PASS",
+    "row_count": "PASS",
+    "primary_key": "PASS",
+    "duplicate_rows": "PASS",
+    "missingness": "PASS",
+    "string_quality": "PASS",
+    "numeric_domain": "PASS",
+    "categorical_domain": "PASS",
+    "train_test_relationship": "PASS",
+    "staged_artifacts": "PASS"
+  },
+  "environment": {
+    "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "polars": "1.44.2"
+  },
+  "status": "PASS"
+}
