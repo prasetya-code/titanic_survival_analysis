@@ -3,3 +3,4 @@ win_env
 .env
 
 # cache
+**__pycache__

@@ -195,6 +195,7 @@ Data telah dibagi menjadi dua kelompok:
 # NOTEBOOKS
 
 ```bash
+# not enterprise mode
 01_ingestion_and_raw_validation.ipynb
 │
 ├── 1. Import & configuration
