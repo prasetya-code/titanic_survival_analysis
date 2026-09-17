@@ -1,31 +1,73 @@
 {
-  "dataset": "titanic",
-  "pipeline_stage": "ingestion",
-  "pipeline_version": "1.0.0",
-  "schema_version": "1.0.0",
-  "ingestion_timestamp_utc": "2026-09-17T01:13:57.181875+00:00",
+  "run": {
+    "run_id": "titanic-ingestion-20260917T034007Z",
+    "started_at_utc": "2026-09-17T03:40:07.822799+00:00",
+    "duration_seconds": 2.0079
+  },
+  "dataset": {
+    "name": "titanic",
+    "source_format": "csv",
+    "artifact_format": "parquet"
+  },
+  "pipeline": {
+    "stage": "ingestion",
+    "pipeline_version": "1.0.0",
+    "schema_version": "1.0.0",
+    "dq_rules_version": "1.0.0"
+  },
   "source": {
     "train": {
       "path": "..\\data\\raw\\train.csv",
+      "file_name": "train.csv",
       "size_bytes": 61194,
-      "sha256": "7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f"
+      "sha256": "7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f",
+      "format": "csv",
+      "encoding": "utf-8",
+      "delimiter": ","
     },
     "test": {
       "path": "..\\data\\raw\\test.csv",
+      "file_name": "test.csv",
       "size_bytes": 28629,
-      "sha256": "56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2"
+      "sha256": "56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2",
+      "format": "csv",
+      "encoding": "utf-8",
+      "delimiter": ","
     }
   },
-  "artifacts": {
+  "schema": {
     "train": {
-      "path": "..\\data\\staged\\train.parquet",
-      "size_bytes": 27613,
-      "sha256": "8057e012ff35427402e0e22e1227e691a2afa78e99595ed7c5c8b5bc9110c271"
+      "columns": [
+        "passengerid",
+        "survived",
+        "pclass",
+        "name",
+        "sex",
+        "age",
+        "sibsp",
+        "parch",
+        "ticket",
+        "fare",
+        "cabin",
+        "embarked"
+      ],
+      "fingerprint_sha256": "0f3eb72d2000aa4f1d222676c7802f36bb4a945c72879844bbf02df1ee8530d2"
     },
     "test": {
-      "path": "..\\data\\staged\\test.parquet",
-      "size_bytes": 15532,
-      "sha256": "aab5bc44778f5c903fa35786c16a4849533b4a5afff20e031575745a4eb3950c"
+      "columns": [
+        "passengerid",
+        "pclass",
+        "name",
+        "sex",
+        "age",
+        "sibsp",
+        "parch",
+        "ticket",
+        "fare",
+        "cabin",
+        "embarked"
+      ],
+      "fingerprint_sha256": "1e26a7abd624b4491dd13e8a5993e76b0fbab542a1355e664077f7f48d7eef16"
     }
   },
   "datasets": {
@@ -61,6 +103,7 @@
         "cabin": "String",
         "embarked": "String"
       },
+      "schema_sha256": "0f3eb72d2000aa4f1d222676c7802f36bb4a945c72879844bbf02df1ee8530d2",
       "estimated_size_bytes": 85871
     },
     "test": {
@@ -93,28 +136,207 @@
         "cabin": "String",
         "embarked": "String"
       },
+      "schema_sha256": "1e26a7abd624b4491dd13e8a5993e76b0fbab542a1355e664077f7f48d7eef16",
       "estimated_size_bytes": 37256
     }
   },
+  "artifacts": {
+    "train": {
+      "path": "..\\data\\staged\\train.parquet",
+      "format": "parquet",
+      "size_bytes": 27613,
+      "sha256": "8057e012ff35427402e0e22e1227e691a2afa78e99595ed7c5c8b5bc9110c271",
+      "schema_sha256": "0f3eb72d2000aa4f1d222676c7802f36bb4a945c72879844bbf02df1ee8530d2",
+      "rows": 891,
+      "columns": 12
+    },
+    "test": {
+      "path": "..\\data\\staged\\test.parquet",
+      "format": "parquet",
+      "size_bytes": 15532,
+      "sha256": "aab5bc44778f5c903fa35786c16a4849533b4a5afff20e031575745a4eb3950c",
+      "schema_sha256": "1e26a7abd624b4491dd13e8a5993e76b0fbab542a1355e664077f7f48d7eef16",
+      "rows": 418,
+      "columns": 11
+    }
+  },
   "validation": {
-    "source_files": "PASS",
-    "source_sha256": "PASS",
-    "schema": "PASS",
-    "data_types": "PASS",
-    "row_count": "PASS",
-    "primary_key": "PASS",
-    "duplicate_rows": "PASS",
-    "missingness": "PASS",
-    "string_quality": "PASS",
-    "numeric_domain": "PASS",
-    "categorical_domain": "PASS",
-    "train_test_relationship": "PASS",
-    "staged_artifacts": "PASS"
+    "overall_status": "PASS_WITH_WARNINGS",
+    "statistics": {
+      "total_rules": 14,
+      "passed": 13,
+      "warnings": 1,
+      "failed": 0
+    },
+    "rules": [
+      {
+        "rule_id": "DQ-001",
+        "check": "source_files",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "train.csv + test.csv",
+        "expected": "existing non-empty CSV files",
+        "message": "Source files exist and are non-empty."
+      },
+      {
+        "rule_id": "DQ-002",
+        "check": "source_fingerprint",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test_sha256\": \"56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2\", \"train_sha256\": \"7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f\"}",
+        "expected": "valid SHA-256 fingerprint",
+        "message": "Source SHA-256 fingerprints generated successfully."
+      },
+      {
+        "rule_id": "DQ-003",
+        "check": "schema",
+        "dataset": "train",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "[\"passengerid\", \"survived\", \"pclass\", \"name\", \"sex\", \"age\", \"sibsp\", \"parch\", \"ticket\", \"fare\", \"cabin\", \"embarked\"]",
+        "expected": "[\"passengerid\", \"survived\", \"pclass\", \"name\", \"sex\", \"age\", \"sibsp\", \"parch\", \"ticket\", \"fare\", \"cabin\", \"embarked\"]",
+        "message": "Train column schema matches the contract."
+      },
+      {
+        "rule_id": "DQ-004",
+        "check": "schema",
+        "dataset": "test",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "[\"passengerid\", \"pclass\", \"name\", \"sex\", \"age\", \"sibsp\", \"parch\", \"ticket\", \"fare\", \"cabin\", \"embarked\"]",
+        "expected": "[\"passengerid\", \"pclass\", \"name\", \"sex\", \"age\", \"sibsp\", \"parch\", \"ticket\", \"fare\", \"cabin\", \"embarked\"]",
+        "message": "Test column schema matches the contract."
+      },
+      {
+        "rule_id": "DQ-005",
+        "check": "data_types",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test\": {\"age\": \"Float64\", \"cabin\": \"String\", \"embarked\": \"String\", \"fare\": \"Float64\", \"name\": \"String\", \"parch\": \"Int64\", \"passengerid\": \"Int64\", \"pclass\": \"Int64\", \"sex\": \"String\", \"sibsp\": \"Int64\", \"ticket\": \"String\"}, \"train\": {\"age\": \"Float64\", \"cabin\": \"String\", \"embarked\": \"String\", \"fare\": \"Float64\", \"name\": \"String\", \"parch\": \"Int64\", \"passengerid\": \"Int64\", \"pclass\": \"Int64\", \"sex\": \"String\", \"sibsp\": \"Int64\", \"survived\": \"Int64\", \"ticket\": \"String\"}}",
+        "expected": "{\"age\": \"Float64\", \"cabin\": \"String\", \"embarked\": \"String\", \"fare\": \"Float64\", \"name\": \"String\", \"parch\": \"Int64\", \"passengerid\": \"Int64\", \"pclass\": \"Int64\", \"sex\": \"String\", \"sibsp\": \"Int64\", \"survived\": \"Int64\", \"ticket\": \"String\"}",
+        "message": "Data types match the schema contract."
+      },
+      {
+        "rule_id": "DQ-006",
+        "check": "row_count",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test\": 418, \"train\": 891}",
+        "expected": "train > 0 and test > 0",
+        "message": "Both datasets contain at least one row."
+      },
+      {
+        "rule_id": "DQ-007",
+        "check": "primary_key",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test\": \"unique and non-null\", \"train\": \"unique and non-null\"}",
+        "expected": "unique and non-null passengerid",
+        "message": "Passenger identifiers are unique, non-null, and positive."
+      },
+      {
+        "rule_id": "DQ-008",
+        "check": "duplicate_rows",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test\": 0, \"train\": 0}",
+        "expected": "0",
+        "message": "No full duplicate records detected."
+      },
+      {
+        "rule_id": "DQ-009",
+        "check": "missingness",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "within configured thresholds",
+        "expected": "within configured thresholds",
+        "message": "Missingness is within the configured project thresholds."
+      },
+      {
+        "rule_id": "DQ-010",
+        "check": "string_quality",
+        "dataset": "all",
+        "status": "WARNING",
+        "severity": "WARNING",
+        "actual": "{\"failures\": 0, \"warnings\": 2}",
+        "expected": "{\"empty_strings\": 0, \"leading_trailing_whitespace\": 0}",
+        "message": "String quality checked without modifying raw values."
+      },
+      {
+        "rule_id": "DQ-011",
+        "check": "numeric_domain",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "validated",
+        "expected": "valid configured numeric domains",
+        "message": "Numeric domain validation passed."
+      },
+      {
+        "rule_id": "DQ-012",
+        "check": "categorical_domain",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "validated",
+        "expected": "configured allowed values",
+        "message": "Categorical domain validation passed."
+      },
+      {
+        "rule_id": "DQ-013",
+        "check": "train_test_relationship",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"overlap_count\": 0}",
+        "expected": "{\"overlap_count\": 0}",
+        "message": "Train and test passenger IDs do not overlap."
+      },
+      {
+        "rule_id": "DQ-014",
+        "check": "staged_artifacts",
+        "dataset": "all",
+        "status": "PASS",
+        "severity": "CRITICAL",
+        "actual": "{\"test\": {\"columns\": 11, \"readable\": true, \"rows\": 418, \"schema_sha256\": \"1e26a7abd624b4491dd13e8a5993e76b0fbab542a1355e664077f7f48d7eef16\"}, \"train\": {\"columns\": 12, \"readable\": true, \"rows\": 891, \"schema_sha256\": \"0f3eb72d2000aa4f1d222676c7802f36bb4a945c72879844bbf02df1ee8530d2\"}}",
+        "expected": "readable and schema-compatible staged artifacts",
+        "message": "Staged Parquet artifacts passed read-back validation."
+      }
+    ]
+  },
+  "metrics": {
+    "train_rows": 891,
+    "test_rows": 418,
+    "train_columns": 12,
+    "test_columns": 11,
+    "train_duplicate_rows": 0,
+    "test_duplicate_rows": 0,
+    "train_test_id_overlap": 0,
+    "string_quality_warnings": 2,
+    "string_quality_failures": 0
+  },
+  "provenance": {
+    "git": {
+      "repository": "https://github.com/prasetya-code/titanic_survival_analysis.git",
+      "branch": "main",
+      "commit": "9dfd9eac8684a6540ed23023441ca23eeca4779c",
+      "available": true
+    }
   },
   "environment": {
     "python": "3.12.0 (tags/v3.12.0:0fb18b0, Oct  2 2023, 13:03:39) [MSC v.1935 64 bit (AMD64)]",
+    "python_executable": "d:\\GIT DATA\\titanic_survival_analysis\\win_env\\Scripts\\python.exe",
     "platform": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 126 Stepping 5, GenuineIntel",
     "polars": "1.44.2"
   },
-  "status": "PASS"
+  "status": "PASS_WITH_WARNINGS"
 }
