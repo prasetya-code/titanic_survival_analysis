@@ -1,3 +1,41 @@
+# Cara Menentukan Status Kolom
+
+Penentuan sebuah kolom bersifat required atau nullable bukan berdasarkan "tebakan", melainkan berdasarkan logika bisnis dan peran teknis kolom tersebut:
+
+
+## Kolom Wajib Ada & Tidak Boleh Null (`required: True, nullable: False`)
+
+Ditentukan jika kolom memiliki peran:
+
+1. **Primary Key / Identifier Utama**: Identitas unik tiap baris (contoh: `passengerid, user_id, transaction_id`). Jika `null`, data tidak bisa diidentifikasi.
+
+2. **Target Utama (Label)**: Kolom yang jadi tujuan prediksi (contoh: `survived` pada dataset Titanic, atau `is_fraud` pada data transaksi).
+
+3. **Variabel Kategorikal / Atribut Kunci**: Data dasar yang pasti dimiliki semua entitas (contoh: `sex, created_at`).
+
+
+## Kolom Boleh Null (`nullable: True`)
+
+Ditentukan jika secara realitas bisnis datanya memang tidak selalu ada:
+
+1. Informasi Opsional: Data yang pengguna/sistem tidak wajib isi (contoh: `cabin, middle_name, phone_number_2`).
+
+2. Kondisional: Nilai baru terisi jika kejadian tertentu terjadi (contoh: `discount_code, cancellation_reason`).
+
+3. Pengukuran yang Hilang: Data sensor atau input manual yang rentan luput (contoh: `age, fare`).
+
+
+## Cara Menentukannya dalam Praktik
+
+1. Konsultasi Aturan Bisnis (Business Rules): Tanyakan ke Domain Expert / Product Owner: "Apakah seorang penumpang bisa terdaftar tanpa umur?" Jika bisa, maka `nullable = True`.
+
+2. Cek Schema Contract Database Sumber: Jika data diambil dari PostgreSQL/MySQL, lihat definisi tabelnya. Kolom dengan atribut `NOT NULL` otomatis menjadi `nullable = False`.
+
+3. Exploratory Data Analysis (EDA): Cek persentase data kosong pada dataset historis. Jika kolom memiliki null ratio tinggi tetapi tetap berguna, setel sebagai `nullable = True`.
+
+
+---
+
 # library Description
 
 | Library          | Fungsi utama                                     | Contoh penggunaan                              |
