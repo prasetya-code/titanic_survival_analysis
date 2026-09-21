@@ -23,7 +23,7 @@ def run_rule(rule_id: str,
     print(f"[RUNNER] --------------------------------------------------")
     print(f"[RUNNER] Menjalankan Aturan DQ [{rule_id}] | Severity: {severity} | Blocking: {is_blocking}")
     print(f"[RUNNER] Kategori: {category} | Scope: {scope}")
-    print(f"[RUNNER] --------------------------------------------------")
+    print(f"[RUNNER] -------------------------------------------------- \n")
 
     try:
         # Eksekusi fungsi validasi
