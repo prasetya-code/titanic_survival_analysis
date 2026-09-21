@@ -254,3 +254,78 @@ Data telah dibagi menjadi dua kelompok:
 └── 16. Final ingestion report
 └── 17. Resource cleanup
 ```
+
+# Another
+
+```bash
+DATA QUALITY
+│
+├── 1. Integrity
+│   ├── File existence
+│   ├── File type
+│   ├── File size
+│   ├── CSV structure
+│   ├── Encoding
+│   └── SHA-256
+│
+├── 2. Schema
+│   ├── Column existence
+│   ├── Column order
+│   ├── Column name
+│   ├── Duplicate column
+│   ├── Data type
+│   ├── Nullable
+│   └── Semantic type
+│
+├── 3. Completeness
+│   ├── Null count
+│   ├── Null ratio
+│   ├── Required fields
+│   ├── Missing threshold
+│   └── Missing tokens
+│
+├── 4. Uniqueness
+│   ├── Primary key
+│   ├── Full-row duplicate
+│   └── Business-key duplicate
+│
+├── 5. Validity
+│   ├── Numeric domain
+│   ├── Categorical domain
+│   ├── String quality
+│   └── Name format
+│
+├── 6. Consistency
+│   ├── Train/Test ID overlap
+│   └── Row-count drift
+│
+├── 7. Artifact Quality
+│   ├── Parquet write
+│   ├── Read-back
+│   ├── Row preservation
+│   ├── Column preservation
+│   ├── Dtype preservation
+│   └── Schema fingerprint
+│
+└── 8. Governance / Provenance
+    ├── Run ID
+    ├── Timestamp
+    ├── Git
+    ├── Environment
+    ├── Pipeline version
+    ├── Schema version
+    ├── DQ rules version
+    └── Validation report
+```
+
+| Kategori           | Pertanyaan yang dijawab                                     |
+| ------------------ | ----------------------------------------------------------- |
+| **Completeness**   | Apakah data yang dibutuhkan tersedia?                       |
+| **Uniqueness**     | Apakah record/key yang seharusnya unik memang unik?         |
+| **Validity**       | Apakah nilai sesuai aturan/domain?                          |
+| **Consistency**    | Apakah data konsisten antar kolom/dataset?                  |
+| **Accuracy**       | Apakah data merepresentasikan kondisi sebenarnya?           |
+| **Timeliness**     | Apakah data cukup terbaru?                                  |
+| **Integrity**      | Apakah data/file tidak rusak atau berubah secara tidak sah? |
+| **Schema Quality** | Apakah struktur data sesuai kontrak?                        |
+| **Provenance**     | Apakah asal-usul dan proses data dapat dilacak?             |
