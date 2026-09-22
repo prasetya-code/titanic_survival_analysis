@@ -4,3 +4,6 @@ win_env
 
 # cache
 **__pycache__
+
+# Data
+data/stage

@@ -117,32 +117,53 @@ def check_csv_structure(file_path: Path,
             print("[SUCCESS] Tahap 3 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
 
         else:
-            expected_columns = [column.strip() for column in expected_columns]
+            # Normalisasi expected columns untuk comparison.
+            # strip() mengabaikan spasi awal/akhir.
+            # lower() membuat comparison tidak case-sensitive.
+            expected_columns = [
+                column.strip().lower()
+                for column in expected_columns
+            ]
 
+            # Header asli tetap dipertahankan untuk reporting.
             actual_columns = header
+
+            # Normalisasi actual columns untuk comparison.
+            # strip() mengabaikan spasi awal/akhir.
+            # lower() membuat comparison tidak case-sensitive.
+            actual_columns_normalized = [
+                column.strip().lower()
+                for column in actual_columns
+            ]
 
             missing_columns = [
                 column
                 for column in expected_columns
-                if column not in actual_columns
+                if column not in actual_columns_normalized
             ]
 
             unexpected_columns = [
                 column
-                for column in actual_columns
+                for column in actual_columns_normalized
                 if column not in expected_columns
             ]
 
             duplicate_columns = [
                 column
-                for column in set(actual_columns)
-                if actual_columns.count(column) > 1
+                for column in set(actual_columns_normalized)
+                if actual_columns_normalized.count(column) > 1
             ]
+
+            # Memeriksa apakah urutan kolom actual sesuai dengan expected.
+            order_mismatch = (
+                expected_columns != actual_columns_normalized
+            )
 
             if (
                 missing_columns
                 or unexpected_columns
                 or duplicate_columns
+                or order_mismatch
             ):
                 print("[FAIL] Tahap 3 Gagal -> Struktur kolom CSV tidak sesuai expected schema.")
 
@@ -157,6 +178,9 @@ def check_csv_structure(file_path: Path,
 
                 if duplicate_columns:
                     print(f"  └─ Duplicate: {duplicate_columns}")
+
+                if order_mismatch:
+                    print("  └─ Order    : Urutan kolom actual berbeda dengan expected.")
 
                 return {"status": "FAIL",
                         "actual": actual_columns,
