@@ -110,6 +110,7 @@ def check_csv_structure(file_path: Path,
     # 3. Cek kesesuaian kolom dengan expected schema (Column Check)
     try:
         print("[DEBUG] [3/4] Memeriksa kesesuaian kolom CSV...")
+        print("  └─ Memeriksa struktur header kolom (tidak match kata (case-sensitive)).")
 
         if expected_columns is None:
             print("[INFO] Expected columns tidak diberikan.")
@@ -202,6 +203,7 @@ def check_csv_structure(file_path: Path,
     # 4. Cek jumlah field setiap row (Row Structure Check)
     try:
         print("[DEBUG] [4/4] Memeriksa jumlah kolom pada setiap row CSV...")
+        print("  └─ Memastikan tidak ada kolom yang bergeser atau hilang di tiap barisnya.")
 
         expected_column_count = len(header)
         total_rows = 0
@@ -250,10 +252,7 @@ def check_csv_structure(file_path: Path,
                     "message": f"Struktur row CSV '{dataset_name}' tidak konsisten."
                     }
 
-        print(
-            f"[SUCCESS] Tahap 4 Lolos -> Seluruh {total_rows} row "
-            f"memiliki {expected_column_count} field. \n"
-        )
+        print(f"[SUCCESS] Tahap 4 Lolos -> Seluruh {total_rows} row memiliki {expected_column_count} field. \n")
 
     except csv.Error as e:
         print(f"[ERROR] Tahap 4 Exception -> Struktur CSV tidak dapat diparse: {str(e)}", file=sys.stderr)
