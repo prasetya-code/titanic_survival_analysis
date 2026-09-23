@@ -1,350 +1,1237 @@
-import polars as pl
+from pathlib import Path
+from datetime import datetime
+from typing import Any
+import csv
+import re
 import sys
 
 
-def check_schema(dataframe: pl.DataFrame,
-                 dataset_name: str = "dataset",
-                 expected_schema: dict | None = None
-                 ) -> dict:
-    # Memvalidasi schema DataFrame (required columns, column order, data type, dan nullable).
+# ======================================================================
+# Helper: Generic Validation Result
+# ======================================================================
+
+def _validation_result(status: str, invalid_count: int = 0, details: list[dict] | None = None, message: str = "") -> dict:
+    """
+    Membuat struktur hasil validation yang konsisten.
+    """
+
+    return {
+        "status": status,
+        "invalid_count": invalid_count,
+        "details": details or [],
+        "message": message
+    }
+
+
+# ======================================================================
+# Helper: Null Check
+# ======================================================================
+
+def _is_null(value: Any) -> bool:
+    """
+    Menentukan apakah value dianggap NULL oleh schema validation.
+    """
+
+    if value is None:
+        return True
+
+    return str(value).strip().lower() in {
+        "",
+        "null",
+        "none",
+        "nan"
+    }
+
+
+# ======================================================================
+# Helper: Case-Insensitive Column Mapping
+# ======================================================================
+
+def _build_column_map(header: list[str]) -> dict[str, str]:
+    """
+    Membuat mapping nama kolom secara case-insensitive.
+
+    Contoh:
+
+        CSV Header:
+            PassengerId
+            Survived
+            Pclass
+
+        Hasil mapping:
+            {
+                "passengerid": "PassengerId",
+                "survived": "Survived",
+                "pclass": "Pclass"
+            }
+
+    Schema tetap boleh menggunakan lowercase.
+    """
+
+    column_map = {}
+
+    for column in header:
+        normalized_column = column.strip().casefold()
+        column_map[normalized_column] = column
+
+    return column_map
+
+
+# ======================================================================
+# Helper: Schema Column Lookup
+# ======================================================================
+
+def _get_actual_column(column: str, column_map: dict[str, str]) -> str | None:
+    """
+    Mencari nama kolom aktual CSV berdasarkan nama schema
+    secara case-insensitive.
+
+    Contoh:
+
+        schema:
+            passengerid
+
+        CSV:
+            PassengerId
+
+        return:
+            PassengerId
+    """
+
+    normalized_column = column.strip().casefold()
+
+    return column_map.get(normalized_column)
+
+
+# ======================================================================
+# Helper: Type Validation
+# ======================================================================
+
+def _is_valid_type(value: Any, expected_type: str) -> bool:
+    """
+    Memeriksa apakah sebuah value sesuai expected data type.
+    """
+
+    if _is_null(value):
+        return True
+
+    value = str(value).strip()
+
+    try:
+
+        if expected_type == "string":
+            return True
+
+        if expected_type == "integer":
+            int(value)
+            return True
+
+        if expected_type == "float":
+            float(value)
+            return True
+
+        if expected_type == "boolean":
+            return value.lower() in {
+                "true",
+                "false",
+                "1",
+                "0"
+            }
+
+        if expected_type == "date":
+            datetime.strptime(value, "%Y-%m-%d")
+            return True
+
+        if expected_type == "datetime":
+            datetime.fromisoformat(value)
+            return True
+
+        return False
+
+    except (ValueError, TypeError):
+        return False
+
+
+# ======================================================================
+# Helper: Format Validation
+# ======================================================================
+
+def _is_valid_format(value: Any, format_rule: str) -> bool:
+    """
+    Memeriksa format sebuah value.
+    """
+
+    if _is_null(value):
+        return True
+
+    value = str(value).strip()
+
+    try:
+
+        if format_rule == "email":
+            return re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value) is not None
+
+        if format_rule == "date":
+            datetime.strptime(value, "%Y-%m-%d")
+            return True
+
+        if format_rule == "datetime":
+            datetime.fromisoformat(value)
+            return True
+
+        if format_rule.startswith("regex:"):
+            pattern = format_rule[6:]
+            return re.fullmatch(pattern, value) is not None
+
+        return False
+
+    except (
+        ValueError,
+        TypeError,
+        re.error
+    ):
+
+        return False
+
+
+# ======================================================================
+# 1. Data Type Validation
+# ======================================================================
+
+def validate_data_type(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Validasi tipe data setiap value terhadap schema.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        expected_type = rules.get("type")
+
+        if expected_type is None:
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "expected_type": expected_type,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate value
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+
+            value = row.get(actual_column)
+
+            if not _is_valid_type(value, expected_type):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value,
+                    "expected_type": expected_type
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Data type validation selesai."
+    )
+
+
+# ======================================================================
+# 2. Nullability Validation
+# ======================================================================
+
+def validate_nullability(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Validasi apakah NULL diperbolehkan pada setiap kolom.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        nullable = rules.get("nullable", False)
+
+        if nullable:
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate NULL
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+
+            value = row.get(actual_column)
+
+            if _is_null(value):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Nullability validation selesai."
+    )
+
+
+# ======================================================================
+# 3. Required Value Validation
+# ======================================================================
+
+def validate_required(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi required field agar memiliki value.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        required = rules.get("required", False)
+
+        if not required:
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate required value
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+
+            value = row.get(actual_column)
+
+            if _is_null(value):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Required value validation selesai."
+    )
+
+
+# ======================================================================
+# 4. Format Validation
+# ======================================================================
+
+def validate_format(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi format value berdasarkan format rule.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        format_rule = rules.get("format")
+
+        if format_rule is None:
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "format": format_rule,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate format
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+
+            value = row.get(actual_column)
+
+            if not _is_valid_format(value, format_rule):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value,
+                    "format": format_rule
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Format validation selesai."
+    )
+
+
+# ======================================================================
+# 5. Range / Constraint Validation
+# ======================================================================
+
+def validate_constraint(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi min/max constraint.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        minimum = rules.get("min")
+        maximum = rules.get("max")
+
+        if (minimum is None and maximum is None):
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "constraint": {
+                    "min": minimum,
+                    "max": maximum
+                },
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate constraint
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+            value = row.get(actual_column)
+
+            if _is_null(value):
+                continue
+
+            try:
+                numeric_value = float(value)
+
+            except (ValueError, TypeError):
+                # Type validation menangani masalah tipe.
+                continue
+
+            if (minimum is not None and numeric_value < minimum):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value,
+                    "constraint": f">= {minimum}"
+                })
+
+            if (maximum is not None and numeric_value > maximum):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value,
+                    "constraint": f"<= {maximum}"
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Constraint validation selesai."
+    )
+
+
+# ======================================================================
+# 6. Allowed Value Validation
+# ======================================================================
+
+def validate_allowed_value(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi apakah value termasuk allowed values.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        allowed_values = rules.get("allowed")
+
+        if allowed_values is None:
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "allowed": allowed_values,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Validate allowed values
+        # --------------------------------------------------------------
+
+        for row_number, row in enumerate(rows, start=2):
+            value = row.get(actual_column)
+
+            if _is_null(value):
+                continue
+
+            if value not in allowed_values:
+
+                invalid_values.append({
+                    "row": row_number,
+                    "column": column,
+                    "actual_column": actual_column,
+                    "value": value,
+                    "allowed": allowed_values
+                })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Allowed value validation selesai."
+    )
+
+
+# ======================================================================
+# 7. Unique Value Validation
+# ======================================================================
+
+def validate_unique(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi uniqueness pada kolom yang ditandai unique=True.
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    invalid_values = []
+
+    for column, rules in schema.items():
+        if not rules.get("unique", False):
+            continue
+
+        actual_column = _get_actual_column(column, column_map)
+
+        # --------------------------------------------------------------
+        # Column tidak ditemukan
+        # --------------------------------------------------------------
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "error": "column_not_found"
+            })
+
+            continue
+
+        # --------------------------------------------------------------
+        # Collect values
+        # --------------------------------------------------------------
+
+        values = [
+            row.get(actual_column)
+            for row in rows
+            if not _is_null(
+                row.get(actual_column)
+            )
+        ]
+
+        seen = set()
+
+        duplicates = set()
+
+        for value in values:
+            if value in seen:
+                duplicates.add(value)
+
+            else:
+                seen.add(value)
+
+        if duplicates:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": actual_column,
+                "duplicates": list(duplicates)
+            })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Unique value validation selesai."
+    )
+
+
+# ======================================================================
+# 8. Primary Key Validation
+# ======================================================================
+
+def validate_primary_key(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+    """
+    Memvalidasi primary key:
+
+    - harus didefinisikan
+    - tidak boleh NULL
+    - harus UNIQUE
+
+    Nama kolom bersifat case-insensitive.
+    """
+
+    primary_key_columns = [
+        column
+        for column, rules in schema.items()
+        if rules.get(
+            "primary_key",
+            False
+        )
+    ]
+
+    if not primary_key_columns:
+
+        return _validation_result(
+            status="PASS",
+            message="Primary key tidak didefinisikan."
+        )
+
+    invalid_values = []
+
+    # --------------------------------------------------------------
+    # Resolve actual CSV column names
+    # --------------------------------------------------------------
+
+    actual_primary_key_columns = []
+
+    for column in primary_key_columns:
+        actual_column = _get_actual_column(column, column_map)
+
+        if actual_column is None:
+
+            invalid_values.append({
+                "column": column,
+                "actual_column": None,
+                "error": "column_not_found"
+            })
+
+        else:
+
+            actual_primary_key_columns.append(
+                actual_column
+            )
+
+    # --------------------------------------------------------------
+    # Stop jika ada primary key column yang tidak ditemukan
+    # --------------------------------------------------------------
+
+    if invalid_values:
+
+        return _validation_result(
+            status="FAIL",
+            invalid_count=len(invalid_values),
+            details=invalid_values,
+            message="Primary key column tidak ditemukan."
+        )
+
+    # --------------------------------------------------------------
+    # Single-column primary key
+    # --------------------------------------------------------------
+
+    if len(primary_key_columns) == 1:
+
+        primary_key = primary_key_columns[0]
+
+        actual_primary_key = actual_primary_key_columns[0]
+
+        values = [
+            row.get(actual_primary_key)
+            for row in rows
+        ]
+
+        # ----------------------------------------------------------
+        # Check NULL
+        # ----------------------------------------------------------
+
+        null_rows = [
+            {
+                "row": row_number,
+                "column": primary_key,
+                "actual_column": actual_primary_key,
+                "value": value
+            }
+            for row_number, value in enumerate(
+                values,
+                start=2
+            )
+            if _is_null(value)
+        ]
+
+        # ----------------------------------------------------------
+        # Check duplicate
+        # ----------------------------------------------------------
+
+        non_null_values = [
+            value
+            for value in values
+            if not _is_null(value)
+        ]
+
+        seen = set()
+
+        duplicate_values = set()
+
+        for value in non_null_values:
+            if value in seen:
+                duplicate_values.add(value)
+
+            else:
+                seen.add(value)
+
+        if null_rows:
+            invalid_values.extend(null_rows)
+
+        if duplicate_values:
+
+            invalid_values.append({
+                "column": primary_key,
+                "actual_column": actual_primary_key,
+                "duplicates": list(
+                    duplicate_values
+                )
+            })
+
+    # --------------------------------------------------------------
+    # Composite primary key
+    # --------------------------------------------------------------
+
+    else:
+        key_values = []
+
+        for row_number, row in enumerate(rows, start=2):
+
+            key = tuple(
+                row.get(actual_column)
+                for actual_column
+                in actual_primary_key_columns
+            )
+
+            if any(_is_null(value) for value in key):
+
+                invalid_values.append({
+                    "row": row_number,
+                    "columns": primary_key_columns,
+                    "actual_columns": actual_primary_key_columns,
+                    "key": key
+                })
+
+            key_values.append(key)
+
+        seen = set()
+
+        duplicate_keys = set()
+
+        for key in key_values:
+            if key in seen:
+                duplicate_keys.add(key)
+
+            else:
+                seen.add(key)
+
+        if duplicate_keys:
+            invalid_values.append({
+                "columns": primary_key_columns,
+                "actual_columns": actual_primary_key_columns,
+                "duplicates": list(
+                    duplicate_keys
+                )
+            })
+
+    status = ("PASS" if not invalid_values else "FAIL")
+
+    return _validation_result(
+        status=status,
+        invalid_count=len(invalid_values),
+        details=invalid_values,
+        message="Primary key validation selesai."
+    )
+
+
+# ======================================================================
+# Helper: Validation Reporter
+# ======================================================================
+
+def _print_validation_result(validation_name: str, result: dict, expected: str, checked: str | None = None) -> None:
+    """
+    Menampilkan hasil validation dengan format konsisten.
+    """
+
+    print(f"\n[DEBUG] {validation_name}")
+    print(f"  ├─ Expected  : {expected}")
+
+    if checked is not None:
+        print(f"  ├─ Checked   : {checked}")
+
+    if result["status"] == "PASS":
+        print("  ├─ Invalid   : 0")
+        print("  └─ Result    : PASS")
+
+    elif result["status"] == "FAIL":
+
+        print(f"  ├─ Invalid   : {result['invalid_count']}")
+
+        for detail in result["details"][:10]:
+            if detail.get("error") == "column_not_found":
+
+                print(f"  ├─ Column    : {detail['column']}")
+                print(f"  │  └─ Error  : Column tidak ditemukan di CSV")
+
+            elif "row" in detail:
+
+                print(f"  ├─ Row {detail['row']} : {detail}")
+
+            else:
+                print(f"  ├─ Detail    : {detail}")
+
+        if result["invalid_count"] > 10:
+            print(f"  ├─ More      : {result['invalid_count'] - 10} lainnya")
+
+        print("  └─ Result    : FAIL")
+
+    else:
+        print("  ├─ Result    : ERROR")
+
+
+# ======================================================================
+# Main Schema Validation
+# ======================================================================
+
+def check_csv_schema(file_path: Path, dataset_name: str = "dataset", schema: dict | None = None) -> dict:
+    """
+    Schema validation utama.
+
+    Validation:
+
+    1. Data Type
+    2. Nullability
+    3. Required Value
+    4. Format
+    5. Range / Constraint
+    6. Allowed Value
+    7. Unique Value
+    8. Primary Key
+
+    Nama kolom schema bersifat CASE-INSENSITIVE
+    terhadap nama kolom CSV.
+    """
+
     print("\n" + "=" * 70)
     print(f"[INFO] Memulai Schema Validation Dataset: '{dataset_name}'")
     print("=" * 70)
 
-    # 1. Cek keberadaan expected schema (Schema Contract Check)
+    print("\n[DEBUG] Target:")
+    print(f"  ├─ Path      : {file_path.resolve()}")
+    print(f"  ├─ File      : {file_path.name}")
+    print(f"  └─ Dataset   : {dataset_name}")
+
+    # ==================================================================
+    # Schema Configuration
+    # ==================================================================
+
+    if schema is None:
+
+        print("\n[DEBUG] Schema Configuration")
+        print("  ├─ Expected  : Schema validation configuration tersedia")
+        print("  ├─ Actual    : Schema tidak diberikan")
+        print("  └─ Result    : FAIL")
+
+        return {
+            "status": "FAIL",
+            "actual": None,
+            "expected": "schema configuration",
+            "message": f"Schema dataset '{dataset_name}' tidak diberikan."
+        }
+
+    # ==================================================================
+    # Load Dataset
+    # ==================================================================
+
     try:
-        print("[DEBUG] [1/4] Memeriksa schema contract...")
 
-        if expected_schema is None:
-            print("[INFO] Expected schema tidak diberikan.")
-            print("[INFO] Pemeriksaan schema dilewati.")
-            print("[SUCCESS] Tahap 1 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
+        print("\n[DEBUG] Loading Dataset")
 
-        else:
-            if not isinstance(expected_schema, dict):
-                print("[FAIL] Tahap 1 Gagal -> Expected schema harus berupa dictionary.")
+        with file_path.open("r", encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            header = reader.fieldnames or []
+            rows = list(reader)
 
-                print("  └─ Expected : dict")
-                print(f"  └─ Actual   : {type(expected_schema).__name__}")
+        print(f"  ├─ Columns   : {len(header)}")
+        print(f"  ├─ Rows      : {len(rows)}")
+        print(f"  └─ Result    : PASS")
 
-                return {"status": "FAIL",
-                        "actual": type(expected_schema).__name__,
-                        "expected": "dict",
-                        "message": f"Expected schema '{dataset_name}' harus berupa dictionary."
-                        }
+    except UnicodeDecodeError as e:
 
-            if len(expected_schema) == 0:
-                print("[FAIL] Tahap 1 Gagal -> Expected schema kosong.")
+        print(f"  ├─ Expected  : UTF-8 compatible CSV file")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print(f"  └─ Result    : ERROR")
 
-                print("  └─ Expected : Schema contract memiliki definisi kolom")
-                print("  └─ Actual   : Empty schema")
+        print(f"[ERROR] Encoding file CSV tidak kompatibel dengan UTF-8: {str(e)}", file=sys.stderr)
 
-                return {"status": "FAIL",
-                        "actual": {},
-                        "expected": "non-empty schema contract",
-                        "message": f"Expected schema '{dataset_name}' kosong."
-                        }
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "UTF-8 compatible CSV file",
+            "message": str(e)
+        }
 
-            print(
-                f"[SUCCESS] Tahap 1 Lolos -> Schema contract ditemukan "
-                f"({len(expected_schema)} kolom). \n"
-            )
+    except csv.Error as e:
+
+        print(f"  ├─ Expected  : Valid CSV data")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print(f"  └─ Result    : ERROR")
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "valid CSV data",
+            "message": str(e)
+        }
 
     except Exception as e:
-        print(f"[ERROR] Tahap 1 Exception -> Gagal memeriksa schema contract: {str(e)}", file=sys.stderr)
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful schema contract check",
-                "message": f"Gagal memeriksa schema contract '{dataset_name}': {str(e)}"
-                }
+        print(f"  ├─ Expected  : Successful CSV loading")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print(f"  └─ Result    : ERROR")
 
-    # 2. Cek kesesuaian kolom dengan expected schema (Column Check)
-    try:
-        print("[DEBUG] [2/4] Memeriksa kesesuaian kolom dengan schema contract...")
-        print("  └─ Memeriksa required columns, extra columns, dan urutan kolom.")
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV loading",
+            "message": str(e)
+        }
 
-        if expected_schema is None:
-            print("[INFO] Expected schema tidak diberikan.")
-            print("[INFO] Pemeriksaan kolom dilewati.")
-            print("[SUCCESS] Tahap 2 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
+    # ==================================================================
+    # Build Case-Insensitive Column Map
+    # ==================================================================
 
-        else:
-            # Expected columns mengikuti urutan yang didefinisikan pada schema contract.
-            expected_columns = [
-                column.strip().lower()
-                for column in expected_schema.keys()
-            ]
+    column_map = _build_column_map(header)
 
-            # Actual columns mengikuti urutan DataFrame.
-            actual_columns = dataframe.columns
+    print(f"\n[DEBUG] Column Mapping")
+    print(f"  ├─ Mode      : CASE-INSENSITIVE")
+    print(f"  ├─ CSV Header:")
 
-            # Normalisasi actual columns untuk comparison.
-            # strip() mengabaikan spasi awal/akhir.
-            # lower() membuat comparison tidak case-sensitive.
-            actual_columns_normalized = [
-                column.strip().lower()
-                for column in actual_columns
-            ]
+    for column in header:
+        print(f"  │  ├─ {column}")
 
-            missing_columns = [
-                column
-                for column in expected_columns
-                if column not in actual_columns_normalized
-            ]
+    print(f"  └─ Schema Mapping:")
 
-            unexpected_columns = [
-                column
-                for column in actual_columns_normalized
-                if column not in expected_columns
-            ]
+    for schema_column in schema:
+        actual_column = _get_actual_column(schema_column, column_map)
 
-            duplicate_columns = [
-                column
-                for column in set(actual_columns_normalized)
-                if actual_columns_normalized.count(column) > 1
-            ]
-
-            # Memeriksa apakah urutan kolom actual sesuai dengan expected.
-            order_mismatch = (
-                expected_columns != actual_columns_normalized
-            )
-
-            if (
-                missing_columns
-                or unexpected_columns
-                or duplicate_columns
-                or order_mismatch
-            ):
-                print("[FAIL] Tahap 2 Gagal -> Struktur kolom DataFrame tidak sesuai schema contract.")
-
-                print(f"  └─ Expected : {expected_columns}")
-                print(f"  └─ Actual   : {actual_columns}")
-
-                if missing_columns:
-                    print(f"  └─ Missing  : {missing_columns}")
-
-                if unexpected_columns:
-                    print(f"  └─ Extra    : {unexpected_columns}")
-
-                if duplicate_columns:
-                    print(f"  └─ Duplicate: {duplicate_columns}")
-
-                if order_mismatch:
-                    print("  └─ Order    : Urutan kolom actual berbeda dengan schema contract.")
-
-                return {"status": "FAIL",
-                        "actual": actual_columns,
-                        "expected": expected_columns,
-                        "message": f"Kolom DataFrame '{dataset_name}' tidak sesuai schema contract."
-                        }
-
-            print(
-                f"[SUCCESS] Tahap 2 Lolos -> "
-                f"{len(actual_columns)} kolom sesuai schema contract. \n"
-            )
-
-    except Exception as e:
-        print(f"[ERROR] Tahap 2 Exception -> Gagal memeriksa struktur kolom schema: {str(e)}", file=sys.stderr)
-
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful schema column check",
-                "message": f"Gagal memeriksa struktur kolom schema '{dataset_name}': {str(e)}"
-                }
-
-    # 3. Cek data type setiap kolom (Data Type Check)
-    try:
-        print("[DEBUG] [3/4] Memeriksa data type setiap kolom...")
-
-        if expected_schema is None:
-            print("[INFO] Expected schema tidak diberikan.")
-            print("[INFO] Pemeriksaan data type dilewati.")
-            print("[SUCCESS] Tahap 3 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
+        if actual_column is not None:
+            print(f"     ├─ {schema_column} → {actual_column}")
 
         else:
-            actual_schema = dataframe.schema
-            invalid_dtypes = []
+            print(f"     ├─ {schema_column} → NOT FOUND")
 
-            for column_name, schema_definition in expected_schema.items():
-                normalized_column_name = column_name.strip().lower()
+    # ==================================================================
+    # Execute 8 Validation Helpers
+    # ==================================================================
 
-                # Cari nama kolom actual berdasarkan comparison yang case-insensitive.
-                actual_column_name = next(
-                    (
-                        column
-                        for column in dataframe.columns
-                        if column.strip().lower() == normalized_column_name
-                    ),
-                    None
-                )
+    validation_results = {}
 
-                # Jika kolom tidak ditemukan, sudah ditangani pada Stage 2.
-                if actual_column_name is None:
-                    continue
+    validation_results["data_type"] = validate_data_type(
+        rows,
+        schema,
+        column_map
+    )
 
-                expected_dtype = schema_definition.get("dtype")
-                actual_dtype = actual_schema.get(actual_column_name)
+    validation_results["nullability"] = validate_nullability(
+        rows,
+        schema,
+        column_map
+    )
 
-                if expected_dtype is None:
-                    print(
-                        f"[INFO] Data type expected untuk kolom "
-                        f"'{actual_column_name}' tidak diberikan."
-                    )
+    validation_results["required"] = validate_required(
+        rows,
+        schema,
+        column_map
+    )
 
-                    continue
+    validation_results["format"] = validate_format(
+        rows,
+        schema,
+        column_map
+    )
 
-                # Normalisasi expected dtype menjadi string untuk comparison.
-                expected_dtype_normalized = str(expected_dtype).strip().lower()
-                actual_dtype_normalized = str(actual_dtype).strip().lower()
+    validation_results["constraint"] = validate_constraint(
+        rows,
+        schema,
+        column_map
+    )
 
-                if expected_dtype_normalized != actual_dtype_normalized:
-                    invalid_dtypes.append({
-                        "column": actual_column_name,
-                        "expected": expected_dtype,
-                        "actual": actual_dtype
-                    })
+    validation_results["allowed_value"] = validate_allowed_value(
+        rows,
+        schema,
+        column_map
+    )
 
-            if invalid_dtypes:
-                print("[FAIL] Tahap 3 Gagal -> Terdapat kolom dengan data type tidak sesuai.")
+    validation_results["unique"] = validate_unique(
+        rows,
+        schema,
+        column_map
+    )
 
-                print(f"  └─ Actual   : {len(invalid_dtypes)} kolom bermasalah")
+    validation_results["primary_key"] = validate_primary_key(
+        rows,
+        schema,
+        column_map
+    )
 
-                for invalid_dtype in invalid_dtypes:
-                    print(
-                        f"  └─ Column '{invalid_dtype['column']}' : "
-                        f"expected={invalid_dtype['expected']}, "
-                        f"actual={invalid_dtype['actual']}"
-                    )
+    # ==================================================================
+    # Reporting
+    # ==================================================================
 
-                return {"status": "FAIL",
-                        "actual": invalid_dtypes,
-                        "expected": "DataFrame data types sesuai schema contract",
-                        "message": f"Data type DataFrame '{dataset_name}' tidak sesuai schema contract."
-                        }
+    _print_validation_result(
+        "[1/8] Data Type Validation",
+        validation_results["data_type"],
+        "Tipe data sesuai expected schema",
+        f"{len(schema)} kolom"
+    )
 
-            print(
-                f"[SUCCESS] Tahap 3 Lolos -> "
-                f"Seluruh data type sesuai schema contract. \n"
-            )
+    _print_validation_result(
+        "[2/8] Nullability Validation",
+        validation_results["nullability"],
+        "NULL hanya diperbolehkan pada kolom nullable",
+        f"{len(schema)} kolom"
+    )
 
-    except Exception as e:
-        print(f"[ERROR] Tahap 3 Exception -> Gagal memeriksa data type schema: {str(e)}", file=sys.stderr)
+    _print_validation_result(
+        "[3/8] Required Value Validation",
+        validation_results["required"],
+        "Required field memiliki value",
+        f"{len(schema)} kolom"
+    )
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful schema data type check",
-                "message": f"Gagal memeriksa data type schema '{dataset_name}': {str(e)}"
-                }
+    _print_validation_result(
+        "[4/8] Format Validation",
+        validation_results["format"],
+        "Nilai mengikuti format schema"
+    )
 
-    # 4. Cek nullable / non-nullable setiap kolom (Nullability Check)
-    try:
-        print("[DEBUG] [4/4] Memeriksa nullable / non-nullable setiap kolom...")
-        print("  └─ Memastikan aturan nullability sesuai dengan schema contract.")
+    _print_validation_result(
+        "[5/8] Range / Constraint Validation",
+        validation_results["constraint"],
+        "Nilai memenuhi range / constraint"
+    )
 
-        if expected_schema is None:
-            print("[INFO] Expected schema tidak diberikan.")
-            print("[INFO] Pemeriksaan nullable dilewati.")
-            print("[SUCCESS] Tahap 4 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
+    _print_validation_result(
+        "[6/8] Allowed Value Validation",
+        validation_results["allowed_value"],
+        "Nilai hanya berasal dari allowed values"
+    )
 
-        else:
-            invalid_nullability = []
+    _print_validation_result(
+        "[7/8] Unique Value Validation",
+        validation_results["unique"],
+        "Kolom unique tidak memiliki duplicate"
+    )
 
-            for column_name, schema_definition in expected_schema.items():
-                normalized_column_name = column_name.strip().lower()
+    _print_validation_result(
+        "[8/8] Primary Key Validation",
+        validation_results["primary_key"],
+        "Primary key valid, NOT NULL dan UNIQUE"
+    )
 
-                # Cari nama kolom actual berdasarkan comparison yang case-insensitive.
-                actual_column_name = next(
-                    (
-                        column
-                        for column in dataframe.columns
-                        if column.strip().lower() == normalized_column_name
-                    ),
-                    None
-                )
+    # ==================================================================
+    # Final Status
+    # ==================================================================
 
-                # Jika kolom tidak ditemukan, sudah ditangani pada Stage 2.
-                if actual_column_name is None:
-                    continue
+    total_validation = len(
+        validation_results
+    )
 
-                nullable_expected = schema_definition.get("nullable")
+    passed_validation = sum(
+        result["status"] == "PASS"
+        for result in validation_results.values()
+    )
 
-                # Jika nullable tidak didefinisikan,
-                # pemeriksaan nullable dilewati.
-                if nullable_expected is None:
-                    print(
-                        f"[INFO] Nullability expected untuk kolom "
-                        f"'{actual_column_name}' tidak diberikan."
-                    )
+    failed_validation = sum(
+        result["status"] == "FAIL"
+        for result in validation_results.values()
+    )
 
-                    continue
+    error_validation = sum(
+        result["status"] == "ERROR"
+        for result in validation_results.values()
+    )
 
-                # Polars menggunakan null_count untuk mengetahui
-                # apakah actual column memiliki nilai null.
-                null_count = dataframe.select(
-                    pl.col(actual_column_name).null_count()
-                ).item()
+    if error_validation > 0:
+        final_status = "ERROR"
 
-                has_null = null_count > 0
+    elif failed_validation > 0:
+        final_status = "FAIL"
 
-                # Jika nullable=False tetapi terdapat null,
-                # schema contract dilanggar.
-                if nullable_expected is False and has_null:
-                    invalid_nullability.append({
-                        "column": actual_column_name,
-                        "expected_nullable": False,
-                        "actual_nullable": True,
-                        "null_count": null_count
-                    })
+    else:
+        final_status = "PASS"
 
-            if invalid_nullability:
-                print("[FAIL] Tahap 4 Gagal -> Terdapat kolom non-nullable yang memiliki null.")
+    # ==================================================================
+    # Final Output
+    # ==================================================================
 
-                print(f"  └─ Actual   : {len(invalid_nullability)} kolom bermasalah")
+    print("\n" + "-" * 70)
 
-                for invalid_null in invalid_nullability:
-                    print(
-                        f"  └─ Column '{invalid_null['column']}' : "
-                        f"expected_nullable={invalid_null['expected_nullable']}, "
-                        f"actual_nullable={invalid_null['actual_nullable']}, "
-                        f"null_count={invalid_null['null_count']}"
-                    )
+    if final_status == "PASS":
 
-                return {"status": "FAIL",
-                        "actual": invalid_nullability,
-                        "expected": "Non-nullable columns tidak memiliki null",
-                        "message": f"Nullability DataFrame '{dataset_name}' tidak sesuai schema contract."
-                        }
+        print(f"[PASS] VALIDASI SUKSES: Schema dataset '{dataset_name}' valid.")
 
-            print(
-                f"[SUCCESS] Tahap 4 Lolos -> "
-                f"Seluruh aturan nullable / non-nullable sesuai schema contract. \n"
-            )
+    elif final_status == "FAIL":
+        print(f"[FAIL] VALIDASI GAGAL: Schema dataset '{dataset_name}' tidak valid.")
 
-    except Exception as e:
-        print(f"[ERROR] Tahap 4 Exception -> Gagal memeriksa nullable schema: {str(e)}", file=sys.stderr)
+    else:
+        print(f"[ERROR] VALIDASI ERROR: Schema dataset '{dataset_name}' tidak dapat divalidasi.")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful schema nullability check",
-                "message": f"Gagal memeriksa nullable schema '{dataset_name}': {str(e)}"
-                }
-
-    # Hasil Akhir Jika Lolos Seluruh Pengecekan
     print("-" * 70)
-    print(f"[PASS] VALIDASI SUKSES: Schema '{dataset_name}' valid.")
-    print(f"[PROVEN] DataFrame '{dataset_name}' memenuhi seluruh schema criteria.")
-    print("-" * 70)
+    print("\n[DEBUG] Validation Summary:")
+    print(f"  ├─ Dataset       : {dataset_name}")
+    print(f"  ├─ File          : {file_path.name}")
+    print(f"  ├─ Columns       : {len(header)}")
+    print(f"  ├─ Rows          : {len(rows)}")
+    print(f"  ├─ Data Type     : {validation_results['data_type']['status']}")
+    print(f"  ├─ Nullability   : {validation_results['nullability']['status']}")
+    print(f"  ├─ Required      : {validation_results['required']['status']}")
+    print(f"  ├─ Format        : {validation_results['format']['status']}")
+    print(f"  ├─ Constraint    : {validation_results['constraint']['status']}")
+    print(f"  ├─ Allowed Value : {validation_results['allowed_value']['status']}")
+    print(f"  ├─ Unique        : {validation_results['unique']['status']}")
+    print(f"  ├─ Primary Key   : {validation_results['primary_key']['status']}")
+    print(f"  └─ Result        : {passed_validation}/{total_validation} PASS")
+    print("=" * 70)
 
-    return {"status": "PASS",
-            "actual": {"dataset_name": dataset_name,
-                       "column_count": len(dataframe.columns),
-                       "columns": dataframe.columns,
-                       "schema": {
-                           column: str(dtype)
-                           for column, dtype in dataframe.schema.items()
-                       }
-                       },
-            "expected": expected_schema,
-            "message": f"Schema DataFrame '{dataset_name}' valid."
-            }
+    return {
+        "status": final_status,
+        "actual": {
+            "path": str(file_path),
+            "file_name": file_path.name,
+            "column_count": len(header),
+            "row_count": len(rows),
+            "validation": validation_results
+        },
+        "expected": {
+            "schema": schema
+        },
+        "message": (
+            f"Schema dataset '{dataset_name}' valid."
+            if final_status == "PASS"
+            else
+            f"Schema dataset '{dataset_name}' tidak valid."
+        )
+    }
