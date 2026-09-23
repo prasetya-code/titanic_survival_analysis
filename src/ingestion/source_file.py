@@ -1,156 +1,336 @@
 from pathlib import Path
 import sys
+from datetime import datetime
 
 
 def _format_size(size_bytes: int) -> str:
-    # Helper untuk memformat ukuran byte ke format yang mudah dibaca.
+    """Memformat ukuran bytes menjadi format yang mudah dibaca."""
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024.0:
             return f"{size_bytes:.2f} {unit}"
-        
+
         size_bytes /= 1024.0
 
     return f"{size_bytes:.2f} TB"
 
 
-def check_source_file(file_path: Path, dataset_name: str = "dataset") -> dict:
-    # Memvalidasi satu file source (keberadaan, tipe, ekstensi CSV, dan ukuran file).
+def _format_timestamp(timestamp: float) -> str:
+    """Memformat timestamp filesystem menjadi tanggal yang mudah dibaca."""
+    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def check_source_file(
+    file_path: Path,
+    dataset_name: str = "dataset"
+) -> dict:
+    """
+    Memvalidasi source file CSV.
+
+    Validation:
+        1. File Existence
+        2. File Type
+        3. File Extension
+        4. File Integrity / Accessibility
+    """
+
+    # ================================================================
+    # HEADER
+    # ================================================================
+
     print("\n" + "=" * 70)
     print(f"[INFO] Memulai Pengecekan Dataset: '{dataset_name}'")
-    print(f"[INFO] Target Path: {file_path.resolve()}")
     print("=" * 70)
 
-    # 1. Cek keberadaan file (Exist Check)
+    print()
+    print("[DEBUG] Target:")
+    print(f"  ├─ Path      : {file_path.resolve()}")
+    print(f"  ├─ File      : {file_path.name}")
+    print(f"  └─ Dataset   : {dataset_name}")
+
+    # ================================================================
+    # 1. FILE EXISTENCE
+    # ================================================================
+
     try:
-        print("[DEBUG] [1/4] Memeriksa keberadaan path...")
+        print()
+        print("[DEBUG] [1/4] File Existence")
+
         exists = file_path.exists()
 
         if not exists:
-            print("[FAIL] Tahap 1 Gagal -> Path tidak ditemukan di sistem file.")
+            print("  ├─ Expected  : File exists")
+            print("  ├─ Actual    : File not found")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : File harus ada pada path tersebut")
-            print(f"  └─ Actual   : Path '{file_path}' tidak ditemukan")
+            print()
+            print(
+                f"[FAIL] Tahap 1 Gagal -> "
+                f"File '{dataset_name}' tidak ditemukan."
+            )
 
-            return {"status": "FAIL", 
-                    "actual": f"{file_path} does not exist", 
-                    "expected": "file exists", 
-                    "message": f"Source file '{dataset_name}' tidak ditemukan: {file_path}" 
-                    }
-        
-        print("[SUCCESS] Tahap 1 Lolos -> File ditemukan. \n")
+            print("-" * 70)
+
+            return {
+                "status": "FAIL",
+                "actual": f"{file_path} does not exist",
+                "expected": "file exists",
+                "message": (
+                    f"Source file '{dataset_name}' "
+                    f"tidak ditemukan: {file_path}"
+                )
+            }
+
+        print("  ├─ Expected  : File exists")
+        print("  └─ Result    : PASS")
 
     except Exception as e:
-        print(f"[ERROR] Tahap 1 Exception -> Gagal memeriksa keberadaan file: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : File exists")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR", 
-                "actual": type(e).__name__, 
-                "expected": "successful path existence check", 
-                "message": f"Gagal mengecek keberadaan file {file_path}: {str(e)}" 
-                }
+        print(
+            f"[ERROR] Tahap 1 Exception -> "
+            f"{str(e)}",
+            file=sys.stderr
+        )
 
-    # 2. Cek apakah berupa file reguler (File Type Check)
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful path existence check",
+            "message": (
+                f"Gagal mengecek keberadaan file "
+                f"{file_path}: {str(e)}"
+            )
+        }
+
+    # ================================================================
+    # 2. FILE TYPE
+    # ================================================================
+
     try:
-        print("[DEBUG] [2/4] Memeriksa tipe path (harus berupa file reguler)...")
+        print()
+        print("[DEBUG] [2/4] File Type")
+
         is_file = file_path.is_file()
 
         if not is_file:
-            print("[FAIL] Tahap 2 Gagal -> Path ditemukan, tetapi bukan file reguler (misal: Direktori/Symlink).")
+            print("  ├─ Expected  : Regular file")
+            print("  ├─ Actual    : Not a regular file")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : Regular file")
-            print("  └─ Actual   : Non-regular file/Directory")
+            print()
+            print(
+                f"[FAIL] Tahap 2 Gagal -> "
+                f"Path '{dataset_name}' bukan file reguler."
+            )
 
-            return {"status": "FAIL", 
-                    "actual": f"{file_path} is not a regular file", 
-                    "expected": "regular file", 
-                    "message": f"Path '{dataset_name}' bukan file reguler: {file_path}" 
-                    }
-        
-        print("[SUCCESS] Tahap 2 Lolos -> Path dikonfirmasi sebagai file reguler. \n")
+            print("-" * 70)
+
+            return {
+                "status": "FAIL",
+                "actual": f"{file_path} is not a regular file",
+                "expected": "regular file",
+                "message": (
+                    f"Path '{dataset_name}' "
+                    f"bukan file reguler: {file_path}"
+                )
+            }
+
+        print("  ├─ Expected  : Regular file")
+        print("  └─ Result    : PASS")
 
     except Exception as e:
-        print(f"[ERROR] Tahap 2 Exception -> Gagal memeriksa tipe file: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Regular file")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR", 
-                "actual": type(e).__name__, 
-                "expected": "successful file type check", 
-                "message": f"Gagal mengecek tipe file {file_path}: {str(e)}" 
-                }
+        print(
+            f"[ERROR] Tahap 2 Exception -> "
+            f"{str(e)}",
+            file=sys.stderr
+        )
 
-    # 3. Cek ekstensi file (Extension Check)
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful file type check",
+            "message": (
+                f"Gagal mengecek tipe file "
+                f"{file_path}: {str(e)}"
+            )
+        }
+
+    # ================================================================
+    # 3. FILE EXTENSION
+    # ================================================================
+
     try:
-        print("[DEBUG] [3/4] Memeriksa ekstensi file...")
+        print()
+        print("[DEBUG] [3/4] File Extension")
+
         ext = file_path.suffix.lower()
 
         if ext != ".csv":
-            print("[FAIL] Tahap 3 Gagal -> Ekstensi file tidak sesuai standar.")
+            print("  ├─ Expected  : .csv")
+            print(f"  ├─ Actual    : {ext or '(none)'}")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : .csv")
-            print(f"  └─ Actual   : {ext}")
+            print()
+            print(
+                f"[FAIL] Tahap 3 Gagal -> "
+                f"File '{dataset_name}' bukan CSV."
+            )
 
-            return {"status": "FAIL", 
-                    "actual": ext, 
-                    "expected": ".csv", 
-                    "message": f"Source file '{dataset_name}' harus format CSV: {file_path}" 
-                    }
+            print("-" * 70)
 
-        print("[SUCCESS] Tahap 3 Lolos -> Format file sesuai (.csv). \n")
-
-    except Exception as e:
-        print(f"[ERROR] Tahap 3 Exception -> Gagal membaca ekstensi file: {str(e)}", file=sys.stderr)
-
-        return {"status": "ERROR", 
-                "actual": type(e).__name__, 
-                "expected": "successful extension check", 
-                "message": f"Gagal membaca ekstensi file {file_path}: {str(e)}" 
-                }
-
-    # 4. Cek ukuran file (File Size Check)
-    try:
-        print("[DEBUG] [4/4] Memeriksa ukuran file (stat().st_size)...")
-
-        size_bytes = file_path.stat().st_size
-        readable_size = _format_size(size_bytes)
-
-        if size_bytes <= 0:
-            print("[FAIL] Tahap 4 Gagal -> File terdeteksi kosong (0 Bytes).")
-
-            print("  └─ Expected : Size > 0 Bytes")
-            print(f"  └─ Actual   : {size_bytes} Bytes")
-
-            return {"status": "FAIL", 
-                    "actual": 0, 
-                    "expected": "> 0 bytes", 
-                    "message": f"Source file '{dataset_name}' kosong: {file_path}" 
-                    }
-
-        print(f"[SUCCESS] Tahap 4 Lolos -> Ukuran file: {size_bytes} Bytes ({readable_size}). \n")
-
-    except Exception as e:
-        print(f"[ERROR] Tahap 4 Exception -> Gagal membaca atribut ukuran file (Kemungkinan masalah akses/permission): {str(e)}", file=sys.stderr)
-
-        return {"status": "ERROR", 
-                "actual": type(e).__name__, 
-                "expected": "successful file size check", 
-                "message": f"Gagal membaca ukuran file {file_path}: {str(e)}" 
-                }
-
-    # Hasil Akhir Jika Lolos Seluruh Pengecekan
-    print("-" * 70)
-    print(f"[PASS] VALIDASI SUKSES: File '{dataset_name}' memenuhi seluruh kriteria.")
-    print(f"[PROVEN] File '{dataset_name}' memenuhi seluruh kriteria.")
-    print("-" * 70)
-
-
-    return {"status": "PASS", 
-            "actual": {"path": str(file_path), 
-                       "file_name": file_path.name, 
-                       "extension": ext, 
-                       "size_bytes": size_bytes, 
-                       "size_human": readable_size 
-                       }, 
-            "expected": "existing, non-empty .csv file", 
-            "message": f"Source file '{dataset_name}' valid." 
+            return {
+                "status": "FAIL",
+                "actual": ext,
+                "expected": ".csv",
+                "message": (
+                    f"Source file '{dataset_name}' "
+                    f"harus format CSV: {file_path}"
+                )
             }
 
+        print("  ├─ Expected  : .csv")
+        print(f"  ├─ Actual    : {ext}")
+        print("  └─ Result    : PASS")
 
+    except Exception as e:
+        print("  ├─ Expected  : .csv")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
+        print(
+            f"[ERROR] Tahap 3 Exception -> "
+            f"{str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful extension check",
+            "message": (
+                f"Gagal membaca ekstensi file "
+                f"{file_path}: {str(e)}"
+            )
+        }
+
+    # ================================================================
+    # 4. FILE INTEGRITY
+    # ================================================================
+
+    try:
+        print()
+        print("[DEBUG] [4/4] File Integrity")
+
+        file_stat = file_path.stat()
+
+        size_bytes = file_stat.st_size
+        readable_size = _format_size(size_bytes)
+        readable = file_path.stat().st_size > 0
+
+        modified = _format_timestamp(file_stat.st_mtime)
+
+        if size_bytes <= 0:
+            print(
+                f"  ├─ Size      : "
+                f"{size_bytes:,} Bytes ({readable_size})"
+            )
+            print(f"  ├─ Readable  : {readable}")
+            print(f"  ├─ Modified  : {modified}")
+            print("  └─ Result    : FAIL")
+
+            print()
+            print(
+                f"[FAIL] Tahap 4 Gagal -> "
+                f"File '{dataset_name}' kosong."
+            )
+
+            print("-" * 70)
+
+            return {
+                "status": "FAIL",
+                "actual": size_bytes,
+                "expected": "> 0 bytes",
+                "message": (
+                    f"Source file '{dataset_name}' "
+                    f"kosong: {file_path}"
+                )
+            }
+
+        print(
+            f"  ├─ Size      : "
+            f"{size_bytes:,} Bytes ({readable_size})"
+        )
+        print(f"  ├─ Readable  : {readable}")
+        print(f"  ├─ Modified  : {modified}")
+        print("  └─ Result    : PASS")
+
+    except Exception as e:
+        print("  ├─ Expected  : Valid readable file")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
+
+        print(
+            f"[ERROR] Tahap 4 Exception -> "
+            f"{str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful file integrity check",
+            "message": (
+                f"Gagal membaca metadata file "
+                f"{file_path}: {str(e)}"
+            )
+        }
+
+    # ================================================================
+    # FINAL RESULT
+    # ================================================================
+
+    print()
+    print("-" * 70)
+
+    print(
+        f"[PASS] VALIDASI SUKSES: "
+        f"File '{dataset_name}' memenuhi seluruh kriteria."
+    )
+
+    print("-" * 70)
+
+    print()
+    print("[DEBUG] Validation Summary:")
+    print(f"  ├─ Dataset     : {dataset_name}")
+    print(f"  ├─ File        : {file_path.name}")
+    print(f"  ├─ Type        : CSV / Regular File")
+    print(f"  ├─ Size        : {readable_size}")
+    print(f"  ├─ Readable    : {readable}")
+    print(f"  └─ Result      : 4/4 PASS")
+
+    print("=" * 70)
+
+    # ================================================================
+    # RETURN
+    # ================================================================
+
+    return {
+        "status": "PASS",
+        "actual": {
+            "path": str(file_path),
+            "file_name": file_path.name,
+            "extension": ext,
+            "size_bytes": size_bytes,
+            "size_human": readable_size,
+            "readable": readable,
+            "modified_at": modified,
+        },
+        "expected": "existing, readable, non-empty .csv file",
+        "message": f"Source file '{dataset_name}' valid.",
+    }

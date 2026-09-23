@@ -3,9 +3,11 @@ import hashlib
 import json
 import sys
 
+
 # ================================================================
 # HELPER
 # ================================================================
+
 def _sha256_file(file_path: Path) -> str:
     # Menghitung SHA-256 dari isi file secara byte-by-byte.
     sha256 = hashlib.sha256()
@@ -17,9 +19,10 @@ def _sha256_file(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
-def _load_previous_fingerprint(fingerprint_path: Path,
-                               dataset_name: str
-                               ) -> dict | None:
+def _load_previous_fingerprint(
+    fingerprint_path: Path,
+    dataset_name: str
+) -> dict | None:
     # Membaca fingerprint dataset dari run sebelumnya jika tersedia.
     if not fingerprint_path.exists():
         return None
@@ -30,10 +33,11 @@ def _load_previous_fingerprint(fingerprint_path: Path,
     return fingerprint_data.get(dataset_name)
 
 
-def _save_fingerprint(fingerprint_path: Path,
-                      dataset_name: str,
-                      fingerprint_data: dict
-                      ) -> None:
+def _save_fingerprint(
+    fingerprint_path: Path,
+    dataset_name: str,
+    fingerprint_data: dict
+) -> None:
     # Menyimpan fingerprint dataset terbaru.
     fingerprint_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -54,10 +58,14 @@ def _save_fingerprint(fingerprint_path: Path,
 # ================================================================
 # MAIN
 # ================================================================
-def check_source_fingerprint(file_path: Path,
-                             dataset_name: str = "dataset",
-                             fingerprint_path: Path = Path("../metadata/source_fingerprint.json")
-                             ) -> dict:
+
+def check_source_fingerprint(
+    file_path: Path,
+    dataset_name: str = "dataset",
+    fingerprint_path: Path = Path(
+        "../metadata/source_fingerprint.json"
+    )
+) -> dict:
     """
     Memvalidasi fingerprint SHA-256 source file.
 
@@ -76,19 +84,42 @@ def check_source_fingerprint(file_path: Path,
     - ERROR      : Terjadi error saat proses
     """
 
+    # ================================================================
+    # HEADER
+    # ================================================================
+
     print("\n" + "=" * 70)
-    print(f"SOURCE FINGERPRINT - {dataset_name.upper()}")
+    print(f"[INFO] SOURCE FINGERPRINT: '{dataset_name}'")
     print("=" * 70)
 
+    print()
+    print("[DEBUG] Target:")
+    print(f"  ├─ Path        : {file_path.resolve()}")
+    print(f"  ├─ File        : {file_path.name}")
+    print(f"  ├─ Dataset     : {dataset_name}")
+    print(f"  └─ Fingerprint : {fingerprint_path.resolve()}")
+
     try:
-        # ------------------------------------------------------------
+
+        # ============================================================
         # [1/5] CHECK SOURCE FILE
-        # ------------------------------------------------------------
-        print("[DEBUG] [1/5] Memeriksa source file...")
+        # ============================================================
+
+        print()
+        print("[DEBUG] [1/5] Source File")
 
         if not file_path.exists():
-            print("[FAIL] Tahap 1 - Source file tidak ditemukan")
-            print(f"  └─ Expected : {file_path}")
+            print("  ├─ Expected  : Existing file")
+            print("  ├─ Actual    : File not found")
+            print("  └─ Result    : FAIL")
+
+            print()
+            print(
+                f"[FAIL] Tahap 1 Gagal -> "
+                f"Source file '{dataset_name}' tidak ditemukan."
+            )
+
+            print("-" * 70)
 
             return {
                 "status": "FAIL",
@@ -98,8 +129,17 @@ def check_source_fingerprint(file_path: Path,
             }
 
         if not file_path.is_file():
-            print("[FAIL] Tahap 1 - Path bukan merupakan file")
-            print(f"  └─ Actual   : {file_path}")
+            print("  ├─ Expected  : Regular file")
+            print("  ├─ Actual    : Path bukan file")
+            print("  └─ Result    : FAIL")
+
+            print()
+            print(
+                f"[FAIL] Tahap 1 Gagal -> "
+                f"Path '{file_path}' bukan file."
+            )
+
+            print("-" * 70)
 
             return {
                 "status": "FAIL",
@@ -108,22 +148,36 @@ def check_source_fingerprint(file_path: Path,
                 "message": "Path bukan merupakan file"
             }
 
-        print("[SUCCESS] Tahap 1 - Source file ditemukan \n")
+        print("  ├─ Expected  : Existing regular file")
+        print("  ├─ Actual    : File ditemukan")
+        print("  └─ Result    : PASS")
 
-        # ------------------------------------------------------------
+        # ============================================================
         # [2/5] CALCULATE SHA-256
-        # ------------------------------------------------------------
-        print("[DEBUG] [2/5] Menghitung SHA-256...")
+        # ============================================================
+
+        print()
+        print("[DEBUG] [2/5] SHA-256 Calculation")
+
+        print("  ├─ Algorithm : SHA-256")
+        print("  ├─ Source    : " + file_path.name)
 
         current_sha256 = _sha256_file(file_path)
 
-        print("[SUCCESS] Tahap 2 - SHA-256 berhasil dihitung")
-        print(f"  └─ SHA-256 : {current_sha256} \n")
+        print(f"  ├─ SHA-256   : {current_sha256}")
+        print("  └─ Result    : PASS")
 
-        # ------------------------------------------------------------
+        # ============================================================
         # [3/5] LOAD PREVIOUS FINGERPRINT
-        # ------------------------------------------------------------
-        print("[DEBUG] [3/5] Memeriksa fingerprint sebelumnya...")
+        # ============================================================
+
+        print()
+        print("[DEBUG] [3/5] Previous Fingerprint")
+
+        print(
+            f"  ├─ Metadata  : "
+            f"{fingerprint_path.resolve()}"
+        )
 
         previous_fingerprint = _load_previous_fingerprint(
             fingerprint_path=fingerprint_path,
@@ -131,8 +185,10 @@ def check_source_fingerprint(file_path: Path,
         )
 
         if previous_fingerprint is None:
-            print("[INFO] Belum terdapat fingerprint sebelumnya")
-            print("[INFO] Source dianggap sebagai NEW_SOURCE")
+
+            print("  ├─ Previous  : Not found")
+            print("  ├─ Status    : NEW_SOURCE")
+            print("  └─ Action    : Create fingerprint")
 
             current_fingerprint = {
                 "dataset_name": dataset_name,
@@ -147,12 +203,14 @@ def check_source_fingerprint(file_path: Path,
                 fingerprint_data=current_fingerprint
             )
 
-            print("[SUCCESS] Fingerprint baru berhasil disimpan, serta pemeriksaan diberhentikan \n")
+            print()
+            print("[SUCCESS] Fingerprint baru berhasil disimpan.")
 
+            print()
             print("-" * 70)
             print("[PASS] NEW_SOURCE")
             print("[PROVEN] Source fingerprint berhasil dibuat")
-            print(f"{'-' * 70} \n")
+            print("-" * 70)
 
             return {
                 "status": "NEW_SOURCE",
@@ -161,19 +219,33 @@ def check_source_fingerprint(file_path: Path,
                 "message": "Fingerprint source baru berhasil dibuat"
             }
 
-        print("[SUCCESS] Tahap 3 - Fingerprint sebelumnya ditemukan \n")
+        print("  ├─ Previous  : Found")
+        print("  └─ Result    : PASS")
 
-        # ------------------------------------------------------------
+        # ============================================================
         # [4/5] VALIDATE SOURCE IDENTITY
-        # ------------------------------------------------------------
-        print("[DEBUG] [4/5] Memvalidasi identitas source...")
+        # ============================================================
+
+        print()
+        print("[DEBUG] [4/5] Source Identity")
 
         current_file_path = str(file_path.resolve())
 
-        previous_dataset_name = previous_fingerprint.get("dataset_name")
-        previous_file_name = previous_fingerprint.get("file_name")
-        previous_file_path = previous_fingerprint.get("file_path")
-        previous_sha256 = previous_fingerprint.get("sha256")
+        previous_dataset_name = previous_fingerprint.get(
+            "dataset_name"
+        )
+
+        previous_file_name = previous_fingerprint.get(
+            "file_name"
+        )
+
+        previous_file_path = previous_fingerprint.get(
+            "file_path"
+        )
+
+        previous_sha256 = previous_fingerprint.get(
+            "sha256"
+        )
 
         dataset_match = (
             previous_dataset_name == dataset_name
@@ -187,28 +259,45 @@ def check_source_fingerprint(file_path: Path,
             previous_file_path == current_file_path
         )
 
-        if not dataset_match:
-            print("[WARNING] Dataset name berbeda")
-            print(f"  └─ Previous : {previous_dataset_name}")
-            print(f"  └─ Current  : {dataset_name}")
+        print("  ├─ Dataset:")
+        print(f"  │  ├─ Previous : {previous_dataset_name}")
+        print(f"  │  ├─ Current  : {dataset_name}")
+        print(
+            f"  │  └─ Match    : "
+            f"{dataset_match}"
+        )
 
-        if not file_name_match:
-            print("[WARNING] File name berbeda")
-            print(f"  └─ Previous : {previous_file_name}")
-            print(f"  └─ Current  : {file_path.name}")
+        print("  ├─ File Name:")
+        print(f"  │  ├─ Previous : {previous_file_name}")
+        print(f"  │  ├─ Current  : {file_path.name}")
+        print(
+            f"  │  └─ Match    : "
+            f"{file_name_match}"
+        )
 
-        if not file_path_match:
-            print("[WARNING] File path berbeda")
-            print(f"  └─ Previous : {previous_file_path}")
-            print(f"  └─ Current  : {current_file_path}")
+        print("  ├─ File Path:")
+        print(f"  │  ├─ Previous : {previous_file_path}")
+        print(f"  │  ├─ Current  : {current_file_path}")
+        print(
+            f"  │  └─ Match    : "
+            f"{file_path_match}"
+        )
 
-        if not (
+        identity_match = (
             dataset_match
             and file_name_match
             and file_path_match
-        ):
-            print("[INFO] Source identity berbeda")
-            print("[INFO] Source dianggap sebagai NEW_SOURCE")
+        )
+
+        if not identity_match:
+
+            print("  └─ Result    : NEW_SOURCE")
+
+            print()
+            print(
+                "[INFO] Source identity berbeda -> "
+                "dianggap sebagai NEW_SOURCE."
+            )
 
             current_fingerprint = {
                 "dataset_name": dataset_name,
@@ -223,8 +312,11 @@ def check_source_fingerprint(file_path: Path,
                 fingerprint_data=current_fingerprint
             )
 
-            print("[SUCCESS] Fingerprint source baru berhasil disimpan \n")
+            print(
+                "[SUCCESS] Fingerprint source baru berhasil disimpan."
+            )
 
+            print()
             print("-" * 70)
             print("[PASS] NEW_SOURCE")
             print("[PROVEN] Source identity berubah")
@@ -237,23 +329,32 @@ def check_source_fingerprint(file_path: Path,
                 "message": "Source identity berbeda"
             }
 
-        print("[SUCCESS] Tahap 4 - Source identity sesuai \n")
+        print("  └─ Result    : PASS")
 
-        # ------------------------------------------------------------
+        # ============================================================
         # [5/5] COMPARE SHA-256
-        # ------------------------------------------------------------
-        print("[DEBUG] [5/5] Membandingkan SHA-256...")
+        # ============================================================
 
-        if current_sha256 == previous_sha256:
-            print("[SUCCESS] SHA-256 tidak berubah")
-            print(f"  └─ Previous : {previous_sha256}")
-            print(f"  └─ Current  : {current_sha256} \n")
+        print()
+        print("[DEBUG] [5/5] SHA-256 Comparison")
 
+        sha256_match = (
+            current_sha256 == previous_sha256
+        )
+
+        print("  ├─ Previous  : " + str(previous_sha256))
+        print("  ├─ Current   : " + current_sha256)
+        print(f"  ├─ Match     : {sha256_match}")
+
+        if sha256_match:
+
+            print("  └─ Result    : UNCHANGED")
+
+            print()
             print("-" * 70)
             print("[PASS] UNCHANGED")
             print("[PROVEN] Source file tidak berubah")
-            print(f"{'-' * 70} \n")
-
+            print("-" * 70)
 
             return {
                 "status": "UNCHANGED",
@@ -269,9 +370,7 @@ def check_source_fingerprint(file_path: Path,
                 "message": "Source file tidak berubah"
             }
 
-        print("[WARNING] SHA-256 berubah")
-        print(f"  └─ Previous : {previous_sha256}")
-        print(f"  └─ Current  : {current_sha256}")
+        print("  └─ Result    : CHANGED")
 
         current_fingerprint = {
             "dataset_name": dataset_name,
@@ -286,13 +385,14 @@ def check_source_fingerprint(file_path: Path,
             fingerprint_data=current_fingerprint
         )
 
-        print("[SUCCESS] Fingerprint terbaru berhasil disimpan \n")
+        print()
+        print("[SUCCESS] Fingerprint terbaru berhasil disimpan.")
 
+        print()
         print("-" * 70)
         print("[WARNING] CHANGED")
         print("[PROVEN] Source file berubah")
-        print(f"{'-' * 70} \n")
-
+        print("-" * 70)
 
         return {
             "status": "CHANGED",
@@ -303,9 +403,26 @@ def check_source_fingerprint(file_path: Path,
             "message": "Source file berubah"
         }
 
+    # ================================================================
+    # ERROR HANDLER
+    # ================================================================
+
     except Exception as e:
-        print("[ERROR] Tahap fingerprint gagal", file=sys.stderr)
-        print(f"  └─ {type(e).__name__}: {e}", file=sys.stderr)
+
+        print()
+        print("[ERROR] Proses fingerprint gagal", file=sys.stderr)
+        print(
+            f"  ├─ Type    : {type(e).__name__}",
+            file=sys.stderr
+        )
+        print(
+            f"  ├─ Message : {e}",
+            file=sys.stderr
+        )
+        print(
+            f"  └─ Dataset : {dataset_name}",
+            file=sys.stderr
+        )
 
         return {
             "status": "ERROR",

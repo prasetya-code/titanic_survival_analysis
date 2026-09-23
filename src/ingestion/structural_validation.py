@@ -8,114 +8,161 @@ def check_csv_structure(file_path: Path,
                         expected_columns: list[str] | None = None
                         ) -> dict:
     # Memvalidasi struktur CSV (readability, header, kolom, dan jumlah field per row).
+
     print("\n" + "=" * 70)
     print(f"[INFO] Memulai Structural Validation Dataset: '{dataset_name}'")
-    print(f"[INFO] Target Path: {file_path.resolve()}")
     print("=" * 70)
 
-    # 1. Cek apakah file CSV dapat dibaca (CSV Readability Check)
+    print("\n[DEBUG] Target:")
+    print(f"  ├─ Path      : {file_path.resolve()}")
+    print(f"  ├─ File      : {file_path.name}")
+    print(f"  └─ Dataset   : {dataset_name}")
+
+    # ==================================================================
+    # 1. Cek apakah file CSV dapat dibaca
+    # ==================================================================
     try:
-        print("[DEBUG] [1/4] Memeriksa apakah file CSV dapat dibaca...")
+        print("\n[DEBUG] [1/4] CSV Readability")
 
         with file_path.open("r", encoding="utf-8-sig", newline="") as f:
             sample = f.read(4096)
 
         if not sample.strip():
-            print("[FAIL] Tahap 1 Gagal -> File CSV kosong atau tidak memiliki isi.")
+            print("  ├─ Expected  : CSV memiliki isi")
+            print("  ├─ Actual    : File kosong")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : CSV file memiliki isi")
-            print("  └─ Actual   : File kosong")
+            return {
+                "status": "FAIL",
+                "actual": "empty file",
+                "expected": "non-empty CSV content",
+                "message": f"File CSV '{dataset_name}' kosong: {file_path}"
+            }
 
-            return {"status": "FAIL",
-                    "actual": "empty file",
-                    "expected": "non-empty CSV content",
-                    "message": f"File CSV '{dataset_name}' kosong: {file_path}"
-                    }
-
-        print("[SUCCESS] Tahap 1 Lolos -> File CSV dapat dibaca dan memiliki isi. \n")
+        print("  ├─ Expected  : File CSV dapat dibaca")
+        print("  ├─ Actual    : File memiliki isi")
+        print("  └─ Result    : PASS")
 
     except UnicodeDecodeError as e:
-        print(f"[ERROR] Tahap 1 Exception -> Encoding file CSV tidak dapat dibaca sebagai UTF-8: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : UTF-8 compatible CSV file")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "UTF-8 compatible CSV file",
-                "message": f"Encoding file CSV '{file_path}' tidak kompatibel dengan UTF-8: {str(e)}"
-                }
+        print(
+            f"[ERROR] Encoding file CSV '{file_path}' tidak kompatibel "
+            f"dengan UTF-8: {str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "UTF-8 compatible CSV file",
+            "message": f"Encoding file CSV '{file_path}' tidak kompatibel dengan UTF-8: {str(e)}"
+        }
 
     except Exception as e:
-        print(f"[ERROR] Tahap 1 Exception -> Gagal membaca file CSV: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Successful CSV read")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful CSV read",
-                "message": f"Gagal membaca file CSV {file_path}: {str(e)}"
-                }
+        print(
+            f"[ERROR] Gagal membaca file CSV: {str(e)}",
+            file=sys.stderr
+        )
 
-    # 2. Cek header CSV (Header Check)
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV read",
+            "message": f"Gagal membaca file CSV {file_path}: {str(e)}"
+        }
+
+    # ==================================================================
+    # 2. Cek header CSV
+    # ==================================================================
     try:
-        print("[DEBUG] [2/4] Memeriksa header CSV...")
+        print("\n[DEBUG] [2/4] CSV Header")
 
         with file_path.open("r", encoding="utf-8-sig", newline="") as f:
             reader = csv.reader(f)
-
             header = next(reader, None)
 
         if header is None or len(header) == 0:
-            print("[FAIL] Tahap 2 Gagal -> Header CSV tidak ditemukan.")
+            print("  ├─ Expected  : CSV memiliki header")
+            print("  ├─ Actual    : Header tidak ditemukan")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : CSV memiliki header")
-            print("  └─ Actual   : Header tidak ditemukan")
-
-            return {"status": "FAIL",
-                    "actual": None,
-                    "expected": "CSV header exists",
-                    "message": f"Header CSV '{dataset_name}' tidak ditemukan: {file_path}"
-                    }
+            return {
+                "status": "FAIL",
+                "actual": None,
+                "expected": "CSV header exists",
+                "message": f"Header CSV '{dataset_name}' tidak ditemukan: {file_path}"
+            }
 
         header = [column.strip() for column in header]
 
         if any(column == "" for column in header):
-            print("[FAIL] Tahap 2 Gagal -> Header CSV memiliki nama kolom kosong.")
+            print("  ├─ Expected  : Semua kolom memiliki nama")
+            print(f"  ├─ Actual    : {header}")
+            print("  └─ Result    : FAIL")
 
-            print("  └─ Expected : Semua kolom memiliki nama")
-            print(f"  └─ Actual   : {header}")
+            return {
+                "status": "FAIL",
+                "actual": header,
+                "expected": "all columns have names",
+                "message": f"Header CSV '{dataset_name}' memiliki nama kolom kosong."
+            }
 
-            return {"status": "FAIL",
-                    "actual": header,
-                    "expected": "all columns have names",
-                    "message": f"Header CSV '{dataset_name}' memiliki nama kolom kosong."
-                    }
-
-        print(f"[SUCCESS] Tahap 2 Lolos -> Header ditemukan ({len(header)} kolom). \n")
+        print("  ├─ Expected  : Header tersedia dan seluruh kolom memiliki nama")
+        print(f"  ├─ Actual    : {len(header)} kolom")
+        print("  └─ Result    : PASS")
 
     except csv.Error as e:
-        print(f"[ERROR] Tahap 2 Exception -> Struktur CSV tidak dapat diparse: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Valid CSV header")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "valid CSV header",
-                "message": f"Gagal membaca header CSV {file_path}: {str(e)}"
-                }
+        print(
+            f"[ERROR] Struktur CSV tidak dapat diparse: {str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "valid CSV header",
+            "message": f"Gagal membaca header CSV {file_path}: {str(e)}"
+        }
 
     except Exception as e:
-        print(f"[ERROR] Tahap 2 Exception -> Gagal memeriksa header CSV: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Successful CSV header check")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful CSV header check",
-                "message": f"Gagal memeriksa header CSV {file_path}: {str(e)}"
-                }
+        print(
+            f"[ERROR] Gagal memeriksa header CSV: {str(e)}",
+            file=sys.stderr
+        )
 
-    # 3. Cek kesesuaian kolom dengan expected schema (Column Check)
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV header check",
+            "message": f"Gagal memeriksa header CSV {file_path}: {str(e)}"
+        }
+
+    # ==================================================================
+    # 3. Cek kesesuaian kolom dengan expected schema
+    # ==================================================================
     try:
-        print("[DEBUG] [3/4] Memeriksa kesesuaian kolom CSV...")
-        print("  └─ Memeriksa struktur header kolom (tidak match kata (case-sensitive)).")
+        print("\n[DEBUG] [3/4] Column Structure")
 
         if expected_columns is None:
-            print("[INFO] Expected columns tidak diberikan.")
-            print("[INFO] Pemeriksaan kolom dilewati.")
-            print("[SUCCESS] Tahap 3 Lolos -> Tidak ada expected schema yang harus dibandingkan. \n")
+            print("  ├─ Expected  : Expected schema tersedia")
+            print("  ├─ Actual    : Tidak diberikan")
+            print("  ├─ Check     : Column schema comparison dilewati")
+            print("  └─ Result    : PASS")
 
         else:
             # Normalisasi expected columns untuk comparison.
@@ -130,8 +177,6 @@ def check_csv_structure(file_path: Path,
             actual_columns = header
 
             # Normalisasi actual columns untuk comparison.
-            # strip() mengabaikan spasi awal/akhir.
-            # lower() membuat comparison tidak case-sensitive.
             actual_columns_normalized = [
                 column.strip().lower()
                 for column in actual_columns
@@ -166,44 +211,58 @@ def check_csv_structure(file_path: Path,
                 or duplicate_columns
                 or order_mismatch
             ):
-                print("[FAIL] Tahap 3 Gagal -> Struktur kolom CSV tidak sesuai expected schema.")
-
-                print(f"  └─ Expected : {expected_columns}")
-                print(f"  └─ Actual   : {actual_columns}")
+                print("  ├─ Expected  : Struktur kolom sesuai expected schema")
+                print(f"  ├─ Expected  : {expected_columns}")
+                print(f"  ├─ Actual    : {actual_columns}")
 
                 if missing_columns:
-                    print(f"  └─ Missing  : {missing_columns}")
+                    print(f"  ├─ Missing   : {missing_columns}")
 
                 if unexpected_columns:
-                    print(f"  └─ Extra    : {unexpected_columns}")
+                    print(f"  ├─ Extra     : {unexpected_columns}")
 
                 if duplicate_columns:
-                    print(f"  └─ Duplicate: {duplicate_columns}")
+                    print(f"  ├─ Duplicate : {duplicate_columns}")
 
                 if order_mismatch:
-                    print("  └─ Order    : Urutan kolom actual berbeda dengan expected.")
+                    print("  ├─ Order     : Tidak sesuai expected")
 
-                return {"status": "FAIL",
-                        "actual": actual_columns,
-                        "expected": expected_columns,
-                        "message": f"Kolom CSV '{dataset_name}' tidak sesuai expected schema."
-                        }
+                print("  └─ Result    : FAIL")
 
-            print(f"[SUCCESS] Tahap 3 Lolos -> {len(actual_columns)} kolom sesuai expected schema. \n")
-
-    except Exception as e:
-        print(f"[ERROR] Tahap 3 Exception -> Gagal memeriksa struktur kolom CSV: {str(e)}", file=sys.stderr)
-
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful CSV column structure check",
-                "message": f"Gagal memeriksa struktur kolom CSV {file_path}: {str(e)}"
+                return {
+                    "status": "FAIL",
+                    "actual": actual_columns,
+                    "expected": expected_columns,
+                    "message": f"Kolom CSV '{dataset_name}' tidak sesuai expected schema."
                 }
 
-    # 4. Cek jumlah field setiap row (Row Structure Check)
+            print("  ├─ Expected  : Struktur kolom sesuai expected schema")
+            print(f"  ├─ Actual    : {len(actual_columns)} kolom")
+            print("  ├─ Matching  : Name + order + uniqueness")
+            print("  └─ Result    : PASS")
+
+    except Exception as e:
+        print("  ├─ Expected  : Successful CSV column structure check")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
+
+        print(
+            f"[ERROR] Gagal memeriksa struktur kolom CSV: {str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV column structure check",
+            "message": f"Gagal memeriksa struktur kolom CSV {file_path}: {str(e)}"
+        }
+
+    # ==================================================================
+    # 4. Cek jumlah field setiap row
+    # ==================================================================
     try:
-        print("[DEBUG] [4/4] Memeriksa jumlah kolom pada setiap row CSV...")
-        print("  └─ Memastikan tidak ada kolom yang bergeser atau hilang di tiap barisnya.")
+        print("\n[DEBUG] [4/4] Row Structure")
 
         expected_column_count = len(header)
         total_rows = 0
@@ -226,69 +285,115 @@ def check_csv_structure(file_path: Path,
                     })
 
         if invalid_rows:
-            print("[FAIL] Tahap 4 Gagal -> Terdapat row dengan jumlah kolom tidak sesuai.")
-
-            print(f"  └─ Expected : {expected_column_count} field per row")
-            print(f"  └─ Actual   : {len(invalid_rows)} row bermasalah")
+            print(
+                f"  ├─ Expected  : {expected_column_count} field per row"
+            )
+            print(f"  ├─ Actual    : {len(invalid_rows)} row bermasalah")
 
             for invalid_row in invalid_rows[:10]:
                 print(
-                    f"  └─ Row {invalid_row['row']} : "
+                    f"  ├─ Row {invalid_row['row']} : "
                     f"expected={invalid_row['expected_fields']}, "
                     f"actual={invalid_row['actual_fields']}"
                 )
 
             if len(invalid_rows) > 10:
                 print(
-                    f"  └─ ... dan {len(invalid_rows) - 10} row lainnya"
+                    f"  ├─ More      : "
+                    f"{len(invalid_rows) - 10} row lainnya"
                 )
 
-            return {"status": "FAIL",
-                    "actual": {"total_rows": total_rows,
-                               "invalid_rows": len(invalid_rows),
-                               "invalid_row_details": invalid_rows[:10]
-                               },
-                    "expected": f"{expected_column_count} fields per row",
-                    "message": f"Struktur row CSV '{dataset_name}' tidak konsisten."
-                    }
+            print("  └─ Result    : FAIL")
 
-        print(f"[SUCCESS] Tahap 4 Lolos -> Seluruh {total_rows} row memiliki {expected_column_count} field. \n")
+            return {
+                "status": "FAIL",
+                "actual": {
+                    "total_rows": total_rows,
+                    "invalid_rows": len(invalid_rows),
+                    "invalid_row_details": invalid_rows[:10]
+                },
+                "expected": f"{expected_column_count} fields per row",
+                "message": f"Struktur row CSV '{dataset_name}' tidak konsisten."
+            }
+
+        print(
+            f"  ├─ Expected  : {expected_column_count} field per row"
+        )
+        print(f"  ├─ Actual    : {total_rows} row diperiksa")
+        print("  ├─ Invalid   : 0 row")
+        print("  └─ Result    : PASS")
 
     except csv.Error as e:
-        print(f"[ERROR] Tahap 4 Exception -> Struktur CSV tidak dapat diparse: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Valid CSV row structure")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "valid CSV row structure",
-                "message": f"Gagal memeriksa struktur row CSV {file_path}: {str(e)}"
-                }
+        print(
+            f"[ERROR] Struktur CSV tidak dapat diparse: {str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "valid CSV row structure",
+            "message": f"Gagal memeriksa struktur row CSV {file_path}: {str(e)}"
+        }
 
     except Exception as e:
-        print(f"[ERROR] Tahap 4 Exception -> Gagal memeriksa struktur row CSV: {str(e)}", file=sys.stderr)
+        print("  ├─ Expected  : Successful CSV row structure check")
+        print(f"  ├─ Actual    : {type(e).__name__}")
+        print("  └─ Result    : ERROR")
 
-        return {"status": "ERROR",
-                "actual": type(e).__name__,
-                "expected": "successful CSV row structure check",
-                "message": f"Gagal memeriksa struktur row CSV {file_path}: {str(e)}"
-                }
+        print(
+            f"[ERROR] Gagal memeriksa struktur row CSV: {str(e)}",
+            file=sys.stderr
+        )
 
-    # Hasil Akhir Jika Lolos Seluruh Pengecekan
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV row structure check",
+            "message": f"Gagal memeriksa struktur row CSV {file_path}: {str(e)}"
+        }
+
+    # ==================================================================
+    # Final Result
+    # ==================================================================
+    print("\n" + "-" * 70)
+    print(
+        f"[PASS] VALIDASI SUKSES: "
+        f"Struktur CSV '{dataset_name}' valid."
+    )
     print("-" * 70)
-    print(f"[PASS] VALIDASI SUKSES: Struktur CSV '{dataset_name}' valid.")
-    print(f"[PROVEN] CSV '{dataset_name}' memenuhi seluruh structural criteria.")
-    print("-" * 70)
 
-    return {"status": "PASS",
-            "actual": {"path": str(file_path),
-                       "file_name": file_path.name,
-                       "column_count": len(header),
-                       "columns": header,
-                       "row_count": total_rows
-                       },
-            "expected": {"format": "CSV",
-                         "header": "exists",
-                         "columns": expected_columns,
-                         "fields_per_row": len(header)
-                         },
-            "message": f"Struktur CSV '{dataset_name}' valid."
-            }
+    print("\n[DEBUG] Validation Summary:")
+    print(f"  ├─ Dataset     : {dataset_name}")
+    print(f"  ├─ File        : {file_path.name}")
+    print(f"  ├─ Format      : CSV")
+    print(f"  ├─ Columns     : {len(header)}")
+    print(f"  ├─ Rows        : {total_rows}")
+    print(f"  ├─ Header      : PASS")
+    print(f"  ├─ Column      : PASS")
+    print(f"  ├─ Row         : PASS")
+    print(f"  └─ Result      : 4/4 PASS")
+
+    print("=" * 70)
+
+    return {
+        "status": "PASS",
+        "actual": {
+            "path": str(file_path),
+            "file_name": file_path.name,
+            "column_count": len(header),
+            "columns": header,
+            "row_count": total_rows
+        },
+        "expected": {
+            "format": "CSV",
+            "header": "exists",
+            "columns": expected_columns,
+            "fields_per_row": len(header)
+        },
+        "message": f"Struktur CSV '{dataset_name}' valid."
+    }
