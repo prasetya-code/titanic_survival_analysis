@@ -63,7 +63,7 @@ def check_source_fingerprint(
     file_path: Path,
     dataset_name: str = "dataset",
     fingerprint_path: Path = Path(
-        "../metadata/source_fingerprint.json"
+        "../metadata/ingestion_source_fingerprint.json"
     )
 ) -> dict:
     """

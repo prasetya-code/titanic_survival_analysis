@@ -66,7 +66,7 @@ def validate_nullability(
         nullable = column_schema.get("nullable")
         max_null_ratio = column_schema.get("max_null_ratio")
 
-        print("-" * 70)
+        print('-' * 70)
         print(f"[DEBUG] Column              : {column_name}")
         print(f"[DEBUG] Nullable            : {nullable}")
         print(f"[DEBUG] Max null ratio      : {max_null_ratio}")
@@ -103,7 +103,7 @@ def validate_nullability(
         print(f"[DEBUG] Null count          : {null_count}")
         print(
             f"[DEBUG] Null ratio          : "
-            f"{null_ratio:.4f}"
+            f"{null_ratio:.2f}"
         )
 
         column_failed = False

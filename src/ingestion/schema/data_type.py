@@ -86,7 +86,7 @@ def validate_data_type(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -122,23 +122,33 @@ def validate_data_type(
 
     for column_name, column_schema in schema.items():
         expected_dtype = column_schema.get("dtype")
+        semantic_type = column_schema.get("semantic_type")
 
         actual_column = csv_columns.get(
             column_name.strip().casefold()
         )
 
-        print("-" * 70)
-        print(f"[DEBUG] Column              : {column_name}")
-        print(f"[DEBUG] Expected dtype      : {expected_dtype}")
+        print(f"{'-' * 70} \n")
+        print(f"[DEBUG] Expected column     : {column_name}")
 
         if actual_column is None:
             print("[DEBUG] Actual column       : NOT FOUND")
-            print("[RESULT] Status            : FAIL")
+            print(
+                f"[DEBUG] Semantic type       : "
+                f"{semantic_type}"
+            )
+            print(
+                f"[DEBUG] Expected dtype      : "
+                f"{expected_dtype}"
+            )
+            print("[DEBUG] Actual dtype        : NOT FOUND")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
             details.append({
                 "column": column_name,
+                "semantic_type": semantic_type,
                 "status": "FAIL",
                 "message": "Kolom tidak ditemukan di CSV.",
             })
@@ -146,60 +156,137 @@ def validate_data_type(
             continue
 
         print(f"[DEBUG] Actual column       : {actual_column}")
+        print(
+            f"[DEBUG] Semantic type       : "
+            f"{semantic_type}"
+        )
 
-        invalid_rows = []
+        actual_dtype = None
 
-        for row_number, row in enumerate(rows, start=2):
+        for row in rows:
             value = row.get(actual_column)
 
-            if not _is_valid_dtype(
-                value,
-                expected_dtype,
-            ):
-                invalid_rows.append({
-                    "row": row_number,
-                    "value": value,
-                })
+            if _is_null(value):
+                continue
 
-        if invalid_rows:
-            print(
-                f"[DEBUG] Invalid values     : "
-                f"{len(invalid_rows)}"
-            )
-            print(
-                f"[DEBUG] Sample rows        : "
-                f"{invalid_rows[:5]}"
-            )
-            print("[RESULT] Status            : FAIL")
+            value = str(value).strip()
+
+            if (
+                value.casefold() in {
+                    "true",
+                    "false",
+                }
+            ):
+                actual_dtype = "boolean"
+
+            else:
+                try:
+                    number = float(value)
+
+                    if number.is_integer():
+                        actual_dtype = "Int64"
+                    else:
+                        actual_dtype = "Float64"
+
+                except (ValueError, TypeError):
+                    try:
+                        datetime.strptime(
+                            value,
+                            "%Y-%m-%d",
+                        )
+                        actual_dtype = "date"
+
+                    except ValueError:
+                        try:
+                            datetime.fromisoformat(value)
+                            actual_dtype = "datetime"
+
+                        except ValueError:
+                            actual_dtype = "string"
+
+            break
+
+        if actual_dtype is None:
+            actual_dtype = str(expected_dtype)
+
+        print(
+            f"[DEBUG] Expected dtype      : "
+            f"{expected_dtype}"
+        )
+        print(
+            f"[DEBUG] Actual dtype        : "
+            f"{actual_dtype}"
+        )
+
+        expected_dtype_normalized = str(
+            expected_dtype
+        ).strip().casefold()
+
+        actual_dtype_normalized = str(
+            actual_dtype
+        ).strip().casefold()
+
+        dtype_aliases = {
+            "int64": {"int64", "integer", "int", "int32"},
+            "float64": {
+                "float64",
+                "float32",
+                "float",
+                "double",
+            },
+            "boolean": {"boolean", "bool"},
+            "datetime": {"datetime", "timestamp"},
+            "string": {"string"},
+            "date": {"date"},
+        }
+
+        expected_group = next(
+            (
+                group
+                for group in dtype_aliases.values()
+                if expected_dtype_normalized in group
+            ),
+            {expected_dtype_normalized},
+        )
+
+        if actual_dtype_normalized in expected_group:
+            print("[RESULT] Status             : PASS")
+
+            details.append({
+                "column": column_name,
+                "actual_column": actual_column,
+                "semantic_type": semantic_type,
+                "expected_dtype": expected_dtype,
+                "actual_dtype": actual_dtype,
+                "status": "PASS",
+                "message": (
+                    f"Dtype kolom sesuai "
+                    f"{expected_dtype}."
+                ),
+            })
+
+        else:
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
             details.append({
                 "column": column_name,
+                "actual_column": actual_column,
+                "semantic_type": semantic_type,
+                "expected_dtype": expected_dtype,
+                "actual_dtype": actual_dtype,
                 "status": "FAIL",
                 "message": (
-                    f"{len(invalid_rows)} nilai tidak "
-                    f"sesuai dtype {expected_dtype}."
-                ),
-                "invalid_rows": invalid_rows[:20],
-            })
-
-        else:
-            print("[DEBUG] Invalid values     : 0")
-            print("[RESULT] Status            : PASS")
-
-            details.append({
-                "column": column_name,
-                "status": "PASS",
-                "message": (
-                    f"Semua nilai sesuai dtype "
-                    f"{expected_dtype}."
+                    f"Dtype tidak sesuai. "
+                    f"Expected: {expected_dtype}, "
+                    f"Actual: {actual_dtype}."
                 ),
             })
 
     status = "FAIL" if failed_columns else "PASS"
 
-    print("=" * 70)
+    print(f"\n{'=' * 70}")
     print("[RESULT] DATA TYPE VALIDATION")
     print("=" * 70)
     print(f"[RESULT] Dataset             : {dataset_name}")
@@ -207,18 +294,18 @@ def validate_data_type(
 
     if failed_columns:
         print(
-            f"[RESULT] Failed columns     : "
+            f"[RESULT] Failed columns      : "
             f"{failed_columns}"
         )
     else:
-        print("[RESULT] Failed columns     : 0")
+        print("[RESULT] Failed columns      : 0")
 
     return {
         "status": status,
         "message": (
             "Data type validation berhasil."
             if status == "PASS"
-            else "Terdapat nilai dengan dtype tidak sesuai."
+            else "Terdapat kolom dengan dtype tidak sesuai."
         ),
         "details": details,
     }

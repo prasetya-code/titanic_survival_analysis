@@ -46,18 +46,9 @@ Provenance & Audit Validation
 ```
 
 
-- `validasi data type` seharusnya:
-```bash
-[DEBUG] Expected column     : survived
-[DEBUG] Actual column       : Survived
-[DEBUG] Expected dtype      : Int64
-[DEBUG] Actual dtype        : Int64
-[RESULT] Status             : PASS
 
-dimana yang penting selain expected dan actual column baik pada column atau dtype Invalid values tidak perlu karena hanya mencocokkan dtype saja
-```
 
-- `validasi nullability` seharusnya ("nullable": true):
+- `validasi nullability`
 ```bash
 [DEBUG] Column              : age
 [DEBUG] Nullable            : True
