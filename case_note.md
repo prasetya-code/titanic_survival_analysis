@@ -33,6 +33,22 @@ Ditentukan jika secara realitas bisnis datanya memang tidak selalu ada:
 
 3. Exploratory Data Analysis (EDA): Cek persentase data kosong pada dataset historis. Jika kolom memiliki null ratio tinggi tetapi tetap berguna, setel sebagai `nullable = True`.
 
+---
+# Dupication
+
+## Primary Key Duplicate
+
+## Full-Row Duplicate
+
+## Business-Key Duplicate (`tergantung aturan bisnis`)
+
+misal, Satu customer hanya boleh mempunyai satu transaksi untuk product tertentu pada tanggal tertentu. Maka business key-nya:
+
+```bash
+customer + product + date
+```
+
+> tidak semua dataset membutuhkan Business-Key Duplicate
 
 ---
 

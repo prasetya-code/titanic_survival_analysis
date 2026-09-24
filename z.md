@@ -3,17 +3,6 @@ MISSING_VALUES = ["", "NA", "N/A", "na", "n/a", "N/a"]
 ```
 
 ```bash
-DQ-004
-Schema Validation
-│
-├── Required Columns
-├── Optional Columns
-├── Column Order
-├── Data Types
-├── Nullable / Non-nullable
-└── Schema Contract
-
-
 DQ-005
 Data Quality Validation
 │
@@ -57,107 +46,160 @@ Provenance & Audit Validation
 ```
 
 
+- `validasi data type` seharusnya:
+```bash
+[DEBUG] Expected column     : survived
+[DEBUG] Actual column       : Survived
+[DEBUG] Expected dtype      : Int64
+[DEBUG] Actual dtype        : Int64
+[RESULT] Status             : PASS
 
+dimana yang penting selain expected dan actual column baik pada column atau dtype Invalid values tidak perlu karena hanya mencocokkan dtype saja
+```
 
-### Perubahan utama
+- `validasi nullability` seharusnya ("nullable": true):
+```bash
+[DEBUG] Column              : age
+[DEBUG] Nullable            : True
+[DEBUG] Max null ratio      : 0.3
+[DEBUG] Null count          : 177
+[DEBUG] Null ratio          : 0.1987
+[RESULT] Status             : PASS
 
-Sekarang schema boleh tetap seperti:
+untuk null ratio nya buatkan dua angka dibelakang koma saja
+```
 
-```python
-TITANIC_SCHEMA = {
-    "passengerid": {
-        "type": "integer",
-        "nullable": False,
-        "required": True,
-        "unique": True,
-        "primary_key": True
-    },
-    "survived": {
-        "type": "integer",
-        "nullable": False,
-        "required": True,
-        "allowed": ["0", "1"]
-    }
+- `validasi format` tidak ada di schema BP, maka penerapan di schema berikut seperti apa:
+```py
+--- ISI TRAIN SCHEMA ---
+{
+  "passengerid": {
+    "dtype": "Int64",
+    "semantic_type": "primary_key",
+    "nullable": false,
+    "required": true
+  },
+  "survived": {
+    "dtype": "Int64",
+    "semantic_type": "binary_target",
+    "allowed_values": [
+      0,
+      1
+    ],
+    "nullable": false,
+    "required": true
+  },
+  "pclass": {
+    "dtype": "Int64",
+    "semantic_type": "categorical",
+    "allowed_values": [
+      1,
+      2,
+      3
+    ],
+    "nullable": false,
+    "required": true
+  },
+  "name": {
+    "dtype": "String",
+    "semantic_type": "text",
+    "nullable": false,
+    "required": true
+  },
+  "sex": {
+    "dtype": "String",
+    "semantic_type": "categorical",
+    "allowed_values": [
+      "male",
+      "female"
+    ],
+    "nullable": false,
+    "required": true
+  },
+  "age": {
+    "dtype": "Float64",
+    "semantic_type": "numeric",
+    "min": 0,
+    "max": 100,
+    "max_null_ratio": 0.3,
+    "nullable": true,
+    "required": false
+  },
+  "sibsp": {
+    "dtype": "Int64",
+    "semantic_type": "count",
+    "min": 0,
+    "nullable": false,
+    "required": true
+  },
+  "parch": {
+    "dtype": "Int64",
+    "semantic_type": "count",
+    "min": 0,
+    "nullable": false,
+    "required": true
+  },
+  "ticket": {
+    "dtype": "String",
+    "semantic_type": "identifier",
+    "nullable": false,
+    "required": true
+  },
+  "fare": {
+    "dtype": "Float64",
+    "semantic_type": "numeric",
+    "min": 0,
+    "max_null_ratio": 0.05,
+    "nullable": true,
+    "required": false
+  },
+  "cabin": {
+    "dtype": "String",
+    "semantic_type": "categorical_text",
+    "max_null_ratio": 0.9,
+    "nullable": true,
+    "required": false
+  },
+  "embarked": {
+    "dtype": "String",
+    "semantic_type": "categorical",
+    "allowed_values": [
+      "C",
+      "Q",
+      "S"
+    ],
+    "max_null_ratio": 0.05,
+    "nullable": true,
+    "required": false
+  }
 }
+
+
+# untuk format sebaiknya menggunakan key semantic_type atau buat key baru dengan nama format
 ```
 
-sedangkan CSV boleh memiliki:
+- `validasi constraint` masih belum paham apa yang di constraint, misal saya mempunyai data berikut:
+```py
+[DEBUG] Column              : age
+[DEBUG] Min                 : 0
+[DEBUG] Max                 : 100
+[DEBUG] Invalid values      : 0
+[DEBUG] Skipped null        : 177
+[RESULT] Status             : PASS
 
-```text
-PassengerId,Survived,Pclass,Name,Sex,...
+# pada [DEBUG] Skipped null sebaiknya dihapus
+
 ```
 
-atau bahkan:
+- pada `validasi allowed` value untuk apa step skipped null, berikut contoh datanya:
+```py
+[DEBUG] Column              : embarked
+[DEBUG] Allowed values      : ['C', 'Q', 'S']
+[DEBUG] Invalid values      : 0
+[DEBUG] Skipped null        : 2
+[RESULT] Status             : PASS
 
-```text
-PASSENGERID,SURVIVED,PCLASS,NAME,SEX,...
+# pada [DEBUG] Skipped null sebaiknya dihapus
 ```
 
-atau:
-
-```text
-passengerid,survived,pclass,name,sex,...
-```
-
-Semuanya akan dianggap cocok karena menggunakan:
-
-```python
-.casefold()
-```
-
-sebagai normalisasi nama kolom.
-
-Contoh mapping yang akan terlihat pada debug:
-
-```text
-[DEBUG] Column Mapping
-  ├─ Mode      : CASE-INSENSITIVE
-  ├─ CSV Header:
-  │  ├─ PassengerId
-  │  ├─ Survived
-  │  ├─ Pclass
-  │  ├─ Name
-  │  └─ ...
-  └─ Schema Mapping:
-     ├─ passengerid → PassengerId
-     ├─ survived → Survived
-     ├─ pclass → Pclass
-     ├─ name → Name
-     └─ ...
-```
-
-Dengan perubahan ini, kasus sebelumnya:
-
-```text
-passengerid → row.get("passengerid") → None
-```
-
-sudah tidak terjadi lagi.
-
-Sekarang prosesnya menjadi:
-
-```text
-schema
-   │
-   └── passengerid
-           │
-           ▼
-      casefold()
-           │
-           ▼
-      "passengerid"
-           │
-           ▼
-      column_map
-           │
-           ▼
-      "PassengerId"
-           │
-           ▼
-      row.get("PassengerId")
-           │
-           ▼
-      "1"
-```
-
-Jadi **case-insensitive hanya berlaku untuk nama kolom**, bukan untuk isi/value data. Misalnya `Sex` dengan allowed `["male", "female"]` tetap divalidasi sesuai value yang didefinisikan schema.
+- `validasi unique` seharusnya melakukan cek full row duplication serta business key duplication
