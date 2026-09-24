@@ -26,7 +26,7 @@ def validate_nullability(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -58,6 +58,7 @@ def validate_nullability(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {total_rows}")
+    print(f"{'-' * 70}\n")
 
     details = []
     failed_columns = []
@@ -66,7 +67,6 @@ def validate_nullability(
         nullable = column_schema.get("nullable")
         max_null_ratio = column_schema.get("max_null_ratio")
 
-        print('-' * 70)
         print(f"[DEBUG] Column              : {column_name}")
         print(f"[DEBUG] Nullable            : {nullable}")
         print(f"[DEBUG] Max null ratio      : {max_null_ratio}")
@@ -77,7 +77,7 @@ def validate_nullability(
 
         if actual_column is None:
             print("[DEBUG] Actual column       : NOT FOUND")
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -130,7 +130,7 @@ def validate_nullability(
             )
 
         if column_failed:
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -143,7 +143,7 @@ def validate_nullability(
             })
 
         else:
-            print("[RESULT] Status            : PASS")
+            print("[RESULT] Status             : PASS")
 
             details.append({
                 "column": column_name,
@@ -155,7 +155,7 @@ def validate_nullability(
 
     status = "FAIL" if failed_columns else "PASS"
 
-    print("=" * 70)
+    print(f"\n{'=' * 70}")
     print("[RESULT] NULLABILITY VALIDATION")
     print("=" * 70)
     print(f"[RESULT] Dataset             : {dataset_name}")
