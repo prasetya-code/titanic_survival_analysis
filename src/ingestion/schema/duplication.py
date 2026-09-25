@@ -20,6 +20,7 @@ def validate_duplication(
     file_path,
     dataset_name,
     schema,
+    business=None,
 ):
     print("=" * 70)
     print("[INFO] VALIDASI UNIQUE")
@@ -27,7 +28,7 @@ def validate_duplication(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -57,107 +58,263 @@ def validate_duplication(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {len(rows)}")
+    print(f"{'-' * 70} \n")
 
     details = []
-    failed_columns = []
-    validated_columns = 0
+    failed_checks = []
 
-    for column_name, column_schema in schema.items():
-        is_unique = column_schema.get("unique")
+    # ================================================================
+    # FULL ROW DUPLICATION
+    # ================================================================
 
-        if is_unique is not True:
-            continue
+    print("[DEBUG] Validasi            : Full Row Duplication")
 
-        validated_columns += 1
+    row_values = defaultdict(list)
 
-        print("-" * 70)
-        print(f"[DEBUG] Column              : {column_name}")
-        print("[DEBUG] Unique              : True")
+    for index, row in enumerate(rows):
 
-        actual_column = csv_columns.get(
-            column_name.strip().casefold()
+        row_key = tuple(
+            str(row.get(column, "")).strip()
+            for column in fieldnames
         )
 
-        if actual_column is None:
-            print("[DEBUG] Actual column       : NOT FOUND")
-            print("[RESULT] Status            : FAIL")
+        row_values[row_key].append(index)
 
-            failed_columns.append(column_name)
+    duplicate_rows = {
+        row_key: indexes
+        for row_key, indexes in row_values.items()
+        if len(indexes) > 1
+    }
 
-            details.append({
-                "column": column_name,
-                "status": "FAIL",
-                "message": "Kolom tidak ditemukan di CSV.",
-            })
+    duplicate_row_count = len(duplicate_rows)
 
-            continue
+    print(f"[DEBUG] Duplicate rows      : {duplicate_row_count}")
 
-        value_rows = defaultdict(list)
+    if duplicate_rows:
 
-        for row_number, row in enumerate(rows, start=2):
-            value = row.get(actual_column)
+        print("[DEBUG] Sample duplicates   :")
 
-            if _is_null(value):
-                continue
+        for row_key, indexes in list(
+            duplicate_rows.items()
+        )[:5]:
 
-            normalized_value = str(value).strip()
+            csv_rows = [
+                index + 2
+                for index in indexes
+            ]
 
-            value_rows[normalized_value].append(
-                row_number
+            print(f"CSV Rows    : {csv_rows}")
+            print(f"Index       : {indexes}")
+            print(f"Value       : {row_key}")
+
+        print("[RESULT] Status             : FAIL")
+
+        failed_checks.append("full_row")
+
+        details.append({
+            "type": "full_row",
+            "status": "FAIL",
+            "message": (
+                f"Ditemukan {duplicate_row_count} "
+                "duplicate full row."
+            ),
+            "duplicates": {
+                row_key: {
+                    "index": indexes,
+                    "rows": [
+                        index + 2
+                        for index in indexes
+                    ],
+                }
+                for row_key, indexes in list(
+                    duplicate_rows.items()
+                )[:20]
+            },
+        })
+
+    else:
+
+        print("[RESULT] Status             : PASS")
+
+        details.append({
+            "type": "full_row",
+            "status": "PASS",
+            "message": "Tidak ditemukan duplicate full row.",
+        })
+
+    print(f"{'-' * 70} \n")
+    
+
+    # ================================================================
+    # BUSINESS KEY / COMPOSITE UNIQUENESS
+    # ================================================================
+
+    business_rules = []
+
+    if business:
+        business_rules = business.get("unique", [])
+
+    print("-" * 70)
+    print(f"[DEBUG] Business rules      : {len(business_rules)}")
+
+    for business_rule in business_rules:
+
+        business_name = business_rule.get("name")
+        business_columns = business_rule.get("columns", [])
+
+        print(f"{'-' * 70} \n")
+
+        print(f"[DEBUG] Business key        : {business_name}")
+        print(f"[DEBUG] Columns             : {business_columns}")
+
+        actual_business_columns = []
+
+        for column_name in business_columns:
+
+            actual_column = csv_columns.get(
+                column_name.strip().casefold()
             )
 
-        duplicates = {
-            value: row_numbers
-            for value, row_numbers in value_rows.items()
-            if len(row_numbers) > 1
+            if actual_column is None:
+
+                print(
+                    f"[DEBUG] Column              : "
+                    f"{column_name}"
+                )
+                print(
+                    "[DEBUG] Actual column       : "
+                    "NOT FOUND"
+                )
+                print("[RESULT] Status             : FAIL")
+
+                failed_checks.append(
+                    f"business:{business_name}"
+                )
+
+                details.append({
+                    "type": "business",
+                    "name": business_name,
+                    "columns": business_columns,
+                    "status": "FAIL",
+                    "message": (
+                        f"Kolom '{column_name}' "
+                        "tidak ditemukan di CSV."
+                    ),
+                })
+
+                actual_business_columns = []
+                break
+
+            actual_business_columns.append(
+                actual_column
+            )
+
+        if not actual_business_columns:
+            continue
+
+        business_values = defaultdict(list)
+
+        for index, row in enumerate(rows):
+
+            if all(
+                _is_null(row.get(column))
+                for column in actual_business_columns
+            ):
+                continue
+
+            business_key = tuple(
+                str(row.get(column, "")).strip()
+                for column in actual_business_columns
+            )
+
+            business_values[business_key].append(index)
+
+        business_duplicates = {
+            business_key: indexes
+            for business_key, indexes
+            in business_values.items()
+            if len(indexes) > 1
         }
 
-        duplicate_count = len(duplicates)
+        duplicate_business_count = len(
+            business_duplicates
+        )
 
         print(
             f"[DEBUG] Duplicate values    : "
-            f"{duplicate_count}"
+            f"{duplicate_business_count}"
         )
 
-        if duplicates:
-            print(
-                f"[DEBUG] Sample duplicates   : "
-                f"{dict(list(duplicates.items())[:5])}"
-            )
-            print("[RESULT] Status            : FAIL")
+        if business_duplicates:
 
-            failed_columns.append(column_name)
+            print("[DEBUG] Sample duplicates   :")
+
+            for business_key, indexes in list(
+                business_duplicates.items()
+            )[:5]:
+
+                csv_rows = [
+                    index + 2
+                    for index in indexes
+                ]
+
+                print(f"CSV Rows    : {csv_rows}")
+                print(f"Index       : {indexes}")
+                print(f"Value       : {business_key} \n")
+
+            print("[RESULT] Status             : FAIL")
+
+            failed_checks.append(
+                f"business:{business_name}"
+            )
 
             details.append({
-                "column": column_name,
+                "type": "business",
+                "name": business_name,
+                "columns": business_columns,
                 "status": "FAIL",
                 "message": (
-                    f"Ditemukan {duplicate_count} "
-                    "nilai duplicate."
+                    f"Ditemukan {duplicate_business_count} "
+                    "duplicate business key."
                 ),
-                "duplicates": dict(
-                    list(duplicates.items())[:20]
-                ),
+                "duplicates": {
+                    business_key: {
+                        "index": indexes,
+                        "rows": [
+                            index + 2
+                            for index in indexes
+                        ],
+                    }
+                    for business_key, indexes in list(
+                        business_duplicates.items()
+                    )[:20]
+                },
             })
 
         else:
-            print("[RESULT] Status            : PASS")
+
+            print("[RESULT] Status             : PASS")
 
             details.append({
-                "column": column_name,
+                "type": "business",
+                "name": business_name,
+                "columns": business_columns,
                 "status": "PASS",
-                "message": "Semua nilai unique.",
+                "message": (
+                    "Semua business key unique."
+                ),
             })
 
-    if validated_columns == 0:
+    if not business_rules:
+
         print(
-            "[DEBUG] Tidak ada kolom dengan "
-            "unique=True dalam schema."
+            "[DEBUG] Tidak ada business "
+            "unique rule."
         )
 
-    status = "FAIL" if failed_columns else "PASS"
+    status = "FAIL" if failed_checks else "PASS"
 
-    print("=" * 70)
+    print(f"\n{'=' * 70}")
     print("[RESULT] UNIQUE VALIDATION")
     print("=" * 70)
     print(f"[RESULT] Dataset             : {dataset_name}")
@@ -168,7 +325,7 @@ def validate_duplication(
         "message": (
             "Unique validation berhasil."
             if status == "PASS"
-            else "Terdapat nilai duplicate."
+            else "Terdapat duplicate data."
         ),
         "details": details,
     }
