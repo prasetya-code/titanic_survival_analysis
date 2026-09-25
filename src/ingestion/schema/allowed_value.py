@@ -63,7 +63,7 @@ def validate_allowed_value(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -93,6 +93,7 @@ def validate_allowed_value(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {len(rows)}")
+    print(f"{'-' * 70} \n")
 
     details = []
     failed_columns = []
@@ -108,7 +109,6 @@ def validate_allowed_value(
 
         validated_columns += 1
 
-        print("-" * 70)
         print(f"[DEBUG] Column              : {column_name}")
         print(
             f"[DEBUG] Allowed values      : "
@@ -121,7 +121,7 @@ def validate_allowed_value(
 
         if actual_column is None:
             print("[DEBUG] Actual column       : NOT FOUND")
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -157,18 +157,15 @@ def validate_allowed_value(
                     "value": value,
                 })
 
-        print(
-            f"[DEBUG] Invalid values     : "
-            f"{len(invalid_rows)}"
-        )
-        print(f"[DEBUG] Skipped null        : {skipped_null}")
+        print(f"[DEBUG] Invalid values      : {len(invalid_rows)}")
+        # print(f"[DEBUG] Skipped null        : {skipped_null}")
 
         if invalid_rows:
             print(
                 f"[DEBUG] Sample rows        : "
                 f"{invalid_rows[:5]}"
             )
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -183,7 +180,7 @@ def validate_allowed_value(
             })
 
         else:
-            print("[RESULT] Status            : PASS")
+            print("[RESULT] Status             : PASS")
 
             details.append({
                 "column": column_name,
@@ -193,6 +190,9 @@ def validate_allowed_value(
                     "allowed_values."
                 ),
             })
+
+        print(f"{'-' * 70} \n")
+
 
     if validated_columns == 0:
         print("[DEBUG] Tidak ada allowed_values dalam schema.")

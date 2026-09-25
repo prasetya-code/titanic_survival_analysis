@@ -27,7 +27,7 @@ def validate_primary_key(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -64,10 +64,7 @@ def validate_primary_key(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {len(rows)}")
-    print(
-        f"[DEBUG] Primary key columns : "
-        f"{primary_key_columns}"
-    )
+    print(f"[DEBUG] Primary key columns  : {primary_key_columns} \n")
 
     if not primary_key_columns:
         print("[DEBUG] Primary key tidak didefinisikan.")
@@ -141,11 +138,9 @@ def validate_primary_key(
                 null_rows.append(row_number)
                 break
 
-    print("-" * 70)
-    print(
-        f"[DEBUG] PK type             : "
-        f"{'COMPOSITE' if len(actual_columns) > 1 else 'SINGLE'}"
-    )
+    print(f"{'-' * 70} \n")
+
+    print(f"[DEBUG] PK type             : {'COMPOSITE' if len(actual_columns) > 1 else 'SINGLE'}")
     print(
         f"[DEBUG] Null PK rows        : "
         f"{len(null_rows)}"
@@ -212,10 +207,7 @@ def validate_primary_key(
         )
     }
 
-    print(
-        f"[DEBUG] Duplicate PK keys  : "
-        f"{len(duplicates)}"
-    )
+    print(f"[DEBUG] Duplicate PK keys   : {len(duplicates)}")
 
     if duplicates:
         failed = True
@@ -224,7 +216,7 @@ def validate_primary_key(
             f"[DEBUG] Sample duplicates   : "
             f"{dict(list(duplicates.items())[:5])}"
         )
-        print("[RESULT] Unique check       : FAIL")
+        print("[RESULT] Unique check       : FAIL \n")
 
         details.append({
             "status": "FAIL",
@@ -238,7 +230,7 @@ def validate_primary_key(
         })
 
     else:
-        print("[RESULT] Unique check       : PASS")
+        print("[RESULT] Unique check       : PASS \n")
 
         details.append({
             "status": "PASS",

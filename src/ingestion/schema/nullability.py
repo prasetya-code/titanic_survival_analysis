@@ -153,6 +153,9 @@ def validate_nullability(
                 "null_ratio": null_ratio,
             })
 
+        print(f"{'-' * 70}\n")
+        
+
     status = "FAIL" if failed_columns else "PASS"
 
     print(f"\n{'=' * 70}")

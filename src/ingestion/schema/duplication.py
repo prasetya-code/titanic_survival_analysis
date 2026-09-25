@@ -16,7 +16,7 @@ def _is_null(value):
     }
 
 
-def validate_unique(
+def validate_duplication(
     file_path,
     dataset_name,
     schema,

@@ -12,7 +12,7 @@ def validate_required(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -42,6 +42,7 @@ def validate_required(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {len(rows)}")
+    print(f"{'-' * 70} \n")
 
     details = []
     failed_columns = []
@@ -52,7 +53,6 @@ def validate_required(
         if required is not True:
             continue
 
-        print("-" * 70)
         print(f"[DEBUG] Required column     : {column_name}")
 
         actual_column = csv_columns.get(
@@ -61,7 +61,7 @@ def validate_required(
 
         if actual_column is None:
             print("[DEBUG] Column status       : MISSING")
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -77,13 +77,16 @@ def validate_required(
                 f"{actual_column}"
             )
             print("[DEBUG] Column status       : FOUND")
-            print("[RESULT] Status            : PASS")
+            print("[RESULT] Status             : PASS")
 
             details.append({
                 "column": column_name,
                 "status": "PASS",
                 "message": "Required column ditemukan.",
             })
+
+        print(f"{'-' * 70} \n")
+        
 
     if not details:
         print("[DEBUG] Tidak ada required column.")

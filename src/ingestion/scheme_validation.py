@@ -386,7 +386,7 @@ def validate_required(rows: list[dict], schema: dict, column_map: dict[str, str]
 # 4. Format Validation
 # ======================================================================
 
-def validate_format(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
+def validate_pattern(rows: list[dict], schema: dict, column_map: dict[str, str]) -> dict:
     """
     Memvalidasi format value berdasarkan format rule.
 
@@ -1066,7 +1066,7 @@ def check_csv_schema(file_path: Path, dataset_name: str = "dataset", schema: dic
         column_map
     )
 
-    validation_results["format"] = validate_format(
+    validation_results["format"] = validate_pattern(
         rows,
         schema,
         column_map

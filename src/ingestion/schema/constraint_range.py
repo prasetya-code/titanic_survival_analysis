@@ -15,7 +15,7 @@ def _is_null(value):
     }
 
 
-def validate_constraint(
+def validate_range(
     file_path,
     dataset_name,
     schema,
@@ -26,7 +26,7 @@ def validate_constraint(
 
     print(f"[DEBUG] Dataset              : {dataset_name}")
     print(f"[DEBUG] File                 : {file_path}")
-    print(f"[DEBUG] Schema columns      : {len(schema)}")
+    print(f"[DEBUG] Schema columns       : {len(schema)}")
 
     try:
         with open(
@@ -56,6 +56,7 @@ def validate_constraint(
 
     print(f"[DEBUG] CSV columns          : {len(fieldnames)}")
     print(f"[DEBUG] Data rows            : {len(rows)}")
+    print(f"{'-' * 70} \n")
 
     details = []
     failed_columns = []
@@ -70,7 +71,6 @@ def validate_constraint(
 
         validated_columns += 1
 
-        print("-" * 70)
         print(f"[DEBUG] Column              : {column_name}")
         print(f"[DEBUG] Min                 : {minimum}")
         print(f"[DEBUG] Max                 : {maximum}")
@@ -81,7 +81,7 @@ def validate_constraint(
 
         if actual_column is None:
             print("[DEBUG] Actual column       : NOT FOUND")
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -127,17 +127,17 @@ def validate_constraint(
                     "row": row_number,
                     "value": value,
                     "reason": f"> max ({maximum})",
-                })
+                })            
 
-        print(f"[DEBUG] Invalid values     : {len(invalid_rows)}")
-        print(f"[DEBUG] Skipped null        : {skipped_rows}")
+        print(f"[DEBUG] Invalid values      : {len(invalid_rows)}")
+        # print(f"[DEBUG] Skipped null        : {skipped_rows}")
 
         if invalid_rows:
             print(
                 f"[DEBUG] Sample rows        : "
                 f"{invalid_rows[:5]}"
             )
-            print("[RESULT] Status            : FAIL")
+            print("[RESULT] Status             : FAIL")
 
             failed_columns.append(column_name)
 
@@ -152,7 +152,7 @@ def validate_constraint(
             })
 
         else:
-            print("[RESULT] Status            : PASS")
+            print("[RESULT] Status             : PASS")
 
             details.append({
                 "column": column_name,
@@ -160,8 +160,12 @@ def validate_constraint(
                 "message": "Semua nilai memenuhi constraint.",
             })
 
+        print(f"{'-' * 70} \n")
+        
+
     if validated_columns == 0:
         print("[DEBUG] Tidak ada constraint min/max.")
+    
 
     status = "FAIL" if failed_columns else "PASS"
 
