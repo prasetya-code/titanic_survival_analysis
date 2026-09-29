@@ -1,0 +1,1 @@
+dir ini hanya kumpulan data raw, staging, dan validation saja

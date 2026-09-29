@@ -1,22 +1,488 @@
 from pathlib import Path
 import sys
+import csv
 from datetime import datetime
 
 
 def _format_size(size_bytes: int) -> str:
     """Memformat ukuran bytes menjadi format yang mudah dibaca."""
+    size = float(size_bytes)
+
     for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.2f} {unit}"
+        if size < 1024.0:
+            return f"{size:.2f} {unit}"
 
-        size_bytes /= 1024.0
+        size /= 1024.0
 
-    return f"{size_bytes:.2f} TB"
+    return f"{size:.2f} TB"
 
 
 def _format_timestamp(timestamp: float) -> str:
     """Memformat timestamp filesystem menjadi tanggal yang mudah dibaca."""
-    return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.fromtimestamp(timestamp).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+
+def _detect_delimiter(file_path: Path) -> str:
+    """
+    Mendeteksi delimiter file text menggunakan csv.Sniffer.
+    Jika gagal, gunakan koma sebagai default.
+    """
+    try:
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8-sig",
+            newline=""
+        ) as file:
+
+            sample = file.read(4096)
+
+            if not sample.strip():
+                return ","
+
+            dialect = csv.Sniffer().sniff(
+                sample,
+                delimiters=",;\t|"
+            )
+
+            return dialect.delimiter
+
+    except Exception:
+        return ","
+
+
+def _read_text_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar file text/tabular.
+
+    Informasi:
+        - encoding
+        - delimiter
+        - has_header
+        - columns
+        - column_count
+        - row_count
+        - empty_rows
+        - inconsistent_rows
+    """
+
+    delimiter = _detect_delimiter(file_path)
+
+    row_count = 0
+    empty_rows = 0
+    inconsistent_rows = 0
+    columns = []
+
+    try:
+        with open(
+            file_path,
+            "r",
+            encoding="utf-8-sig",
+            newline=""
+        ) as file:
+
+            reader = csv.reader(
+                file,
+                delimiter=delimiter
+            )
+
+            try:
+                header = next(reader)
+            except StopIteration:
+                return {
+                    "encoding": "UTF-8",
+                    "delimiter": delimiter,
+                    "has_header": False,
+                    "columns": [],
+                    "column_count": 0,
+                    "row_count": 0,
+                    "empty_rows": 0,
+                    "inconsistent_rows": 0,
+                }
+
+            columns = [
+                column.strip()
+                for column in header
+            ]
+
+            expected_column_count = len(columns)
+
+            for row in reader:
+                if not row or all(
+                    str(value).strip() == ""
+                    for value in row
+                ):
+                    empty_rows += 1
+                    continue
+
+                row_count += 1
+
+                if len(row) != expected_column_count:
+                    inconsistent_rows += 1
+
+        return {
+            "encoding": "UTF-8",
+            "delimiter": delimiter,
+            "has_header": True,
+            "columns": columns,
+            "column_count": len(columns),
+            "row_count": row_count,
+            "empty_rows": empty_rows,
+            "inconsistent_rows": inconsistent_rows,
+        }
+
+    except UnicodeDecodeError:
+        return {
+            "encoding": "Unknown",
+            "delimiter": delimiter,
+            "has_header": False,
+            "columns": [],
+            "column_count": 0,
+            "row_count": 0,
+            "empty_rows": 0,
+            "inconsistent_rows": 0,
+        }
+
+    except Exception:
+        raise
+
+
+def _read_json_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar JSON/JSONL.
+    """
+    import json
+
+    row_count = 0
+    empty_rows = 0
+    columns = []
+    inconsistent_rows = 0
+
+    with open(
+        file_path,
+        "r",
+        encoding="utf-8-sig"
+    ) as file:
+
+        content = file.read().strip()
+
+    if not content:
+        return {
+            "encoding": "UTF-8",
+            "delimiter": None,
+            "has_header": False,
+            "columns": [],
+            "column_count": 0,
+            "row_count": 0,
+            "empty_rows": 0,
+            "inconsistent_rows": 0,
+        }
+
+    # JSON Lines
+    if file_path.suffix.lower() == ".jsonl":
+        records = []
+
+        for line in content.splitlines():
+            if not line.strip():
+                empty_rows += 1
+                continue
+
+            record = json.loads(line)
+            records.append(record)
+
+        if records and all(
+            isinstance(record, dict)
+            for record in records
+        ):
+            for record in records:
+                columns.extend(record.keys())
+
+            columns = list(dict.fromkeys(columns))
+            row_count = len(records)
+
+            return {
+                "encoding": "UTF-8",
+                "delimiter": None,
+                "has_header": True,
+                "columns": columns,
+                "column_count": len(columns),
+                "row_count": row_count,
+                "empty_rows": empty_rows,
+                "inconsistent_rows": inconsistent_rows,
+            }
+
+        return {
+            "encoding": "UTF-8",
+            "delimiter": None,
+            "has_header": False,
+            "columns": [],
+            "column_count": 0,
+            "row_count": len(records),
+            "empty_rows": empty_rows,
+            "inconsistent_rows": 0,
+        }
+
+    data = json.loads(content)
+
+    if isinstance(data, list):
+        row_count = len(data)
+
+        if data and all(
+            isinstance(record, dict)
+            for record in data
+        ):
+            for record in data:
+                columns.extend(record.keys())
+
+            columns = list(dict.fromkeys(columns))
+
+            return {
+                "encoding": "UTF-8",
+                "delimiter": None,
+                "has_header": True,
+                "columns": columns,
+                "column_count": len(columns),
+                "row_count": row_count,
+                "empty_rows": 0,
+                "inconsistent_rows": 0,
+            }
+
+        if data and all(
+            isinstance(record, list)
+            for record in data
+        ):
+            columns = [
+                f"column_{index + 1}"
+                for index in range(
+                    max(len(record) for record in data)
+                )
+            ]
+
+            expected_column_count = len(columns)
+
+            for record in data:
+                if len(record) != expected_column_count:
+                    inconsistent_rows += 1
+
+            return {
+                "encoding": "UTF-8",
+                "delimiter": None,
+                "has_header": False,
+                "columns": columns,
+                "column_count": len(columns),
+                "row_count": row_count,
+                "empty_rows": 0,
+                "inconsistent_rows": inconsistent_rows,
+            }
+
+    if isinstance(data, dict):
+        columns = list(data.keys())
+
+        return {
+            "encoding": "UTF-8",
+            "delimiter": None,
+            "has_header": True,
+            "columns": columns,
+            "column_count": len(columns),
+            "row_count": 1,
+            "empty_rows": 0,
+            "inconsistent_rows": 0,
+        }
+
+    return {
+        "encoding": "UTF-8",
+        "delimiter": None,
+        "has_header": False,
+        "columns": [],
+        "column_count": 0,
+        "row_count": 1,
+        "empty_rows": 0,
+        "inconsistent_rows": 0,
+    }
+
+
+def _read_excel_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar Excel.
+
+    Membutuhkan openpyxl untuk file .xlsx.
+    """
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(
+        filename=file_path,
+        read_only=True,
+        data_only=True
+    )
+
+    try:
+        worksheet = workbook.active
+
+        rows = worksheet.iter_rows(values_only=True)
+
+        try:
+            header = next(rows)
+        except StopIteration:
+            return {
+                "encoding": "Excel",
+                "delimiter": None,
+                "has_header": False,
+                "columns": [],
+                "column_count": 0,
+                "row_count": 0,
+                "empty_rows": 0,
+                "inconsistent_rows": 0,
+            }
+
+        columns = [
+            str(column).strip()
+            if column is not None
+            else ""
+            for column in header
+        ]
+
+        expected_column_count = len(columns)
+
+        row_count = 0
+        empty_rows = 0
+        inconsistent_rows = 0
+
+        for row in rows:
+            if not row or all(
+                value is None or str(value).strip() == ""
+                for value in row
+            ):
+                empty_rows += 1
+                continue
+
+            row_count += 1
+
+            if len(row) != expected_column_count:
+                inconsistent_rows += 1
+
+        return {
+            "encoding": "Excel",
+            "delimiter": None,
+            "has_header": True,
+            "columns": columns,
+            "column_count": len(columns),
+            "row_count": row_count,
+            "empty_rows": empty_rows,
+            "inconsistent_rows": inconsistent_rows,
+        }
+
+    finally:
+        workbook.close()
+
+
+def _read_parquet_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar Parquet.
+
+    Membutuhkan pyarrow.
+    """
+    import pyarrow.parquet as pq
+
+    parquet_file = pq.ParquetFile(file_path)
+    schema = parquet_file.schema_arrow
+
+    columns = list(schema.names)
+
+    return {
+        "encoding": "Parquet",
+        "delimiter": None,
+        "has_header": True,
+        "columns": columns,
+        "column_count": len(columns),
+        "row_count": parquet_file.metadata.num_rows,
+        "empty_rows": 0,
+        "inconsistent_rows": 0,
+    }
+
+
+def _read_csv_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar CSV.
+    """
+    return _read_text_metadata(file_path)
+
+
+def _read_tsv_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar TSV.
+    """
+    return _read_text_metadata(file_path)
+
+
+def _read_txt_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar TXT.
+    """
+    return _read_text_metadata(file_path)
+
+
+def _read_jsonl_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar JSONL.
+    """
+    return _read_json_metadata(file_path)
+
+
+def _read_file_metadata(file_path: Path) -> dict:
+    """
+    Membaca metadata dasar source file berdasarkan extension.
+
+    Format yang didukung:
+        - CSV
+        - TSV
+        - TXT
+        - JSON
+        - JSONL
+        - XLSX
+        - Parquet
+    """
+
+    extension = file_path.suffix.lower()
+
+    if extension == ".csv":
+        return _read_csv_metadata(file_path)
+
+    elif extension == ".tsv":
+        return _read_tsv_metadata(file_path)
+
+    elif extension == ".txt":
+        return _read_txt_metadata(file_path)
+
+    elif extension == ".json":
+        return _read_json_metadata(file_path)
+
+    elif extension == ".jsonl":
+        return _read_jsonl_metadata(file_path)
+
+    elif extension == ".xlsx":
+        return _read_excel_metadata(file_path)
+
+    elif extension == ".parquet":
+        return _read_parquet_metadata(file_path)
+
+    else:
+        raise ValueError(
+            f"Format file '{extension or '(none)'}' "
+            f"belum didukung."
+        )
+
+
+SUPPORTED_EXTENSIONS = {
+    ".csv",
+    ".tsv",
+    ".txt",
+    ".json",
+    ".jsonl",
+    ".xlsx",
+    ".parquet",
+}
 
 
 def check_source_file(
@@ -24,13 +490,14 @@ def check_source_file(
     dataset_name: str = "dataset"
 ) -> dict:
     """
-    Memvalidasi source file CSV.
+    Memvalidasi source file data.
 
     Validation:
         1. File Existence
         2. File Type
         3. File Extension
-        4. File Integrity / Accessibility
+        4. File Integrity
+        5. Data Structure
     """
 
     # ================================================================
@@ -53,13 +520,14 @@ def check_source_file(
 
     try:
         print()
-        print("[DEBUG] [1/4] File Existence")
+        print("[DEBUG] [1/5] File Existence")
 
         exists = file_path.exists()
 
+        print("  ├─ Expected  : File exists")
+        print(f"  ├─ Actual    : {exists}")
+
         if not exists:
-            print("  ├─ Expected  : File exists")
-            print("  ├─ Actual    : File not found")
             print("  └─ Result    : FAIL")
 
             print()
@@ -80,17 +548,16 @@ def check_source_file(
                 )
             }
 
-        print("  ├─ Expected  : File exists")
         print("  └─ Result    : PASS")
 
     except Exception as e:
+
         print("  ├─ Expected  : File exists")
         print(f"  ├─ Actual    : {type(e).__name__}")
         print("  └─ Result    : ERROR")
 
         print(
-            f"[ERROR] Tahap 1 Exception -> "
-            f"{str(e)}",
+            f"[ERROR] Tahap 1 Exception -> {str(e)}",
             file=sys.stderr
         )
 
@@ -110,13 +577,16 @@ def check_source_file(
 
     try:
         print()
-        print("[DEBUG] [2/4] File Type")
+        print("[DEBUG] [2/5] File Type")
 
         is_file = file_path.is_file()
+        is_symlink = file_path.is_symlink()
+
+        print("  ├─ Expected  : Regular file")
+        print(f"  ├─ Is File   : {is_file}")
+        print(f"  ├─ Symlink   : {is_symlink}")
 
         if not is_file:
-            print("  ├─ Expected  : Regular file")
-            print("  ├─ Actual    : Not a regular file")
             print("  └─ Result    : FAIL")
 
             print()
@@ -137,17 +607,16 @@ def check_source_file(
                 )
             }
 
-        print("  ├─ Expected  : Regular file")
         print("  └─ Result    : PASS")
 
     except Exception as e:
+
         print("  ├─ Expected  : Regular file")
         print(f"  ├─ Actual    : {type(e).__name__}")
         print("  └─ Result    : ERROR")
 
         print(
-            f"[ERROR] Tahap 2 Exception -> "
-            f"{str(e)}",
+            f"[ERROR] Tahap 2 Exception -> {str(e)}",
             file=sys.stderr
         )
 
@@ -167,19 +636,31 @@ def check_source_file(
 
     try:
         print()
-        print("[DEBUG] [3/4] File Extension")
+        print("[DEBUG] [3/5] File Extension")
 
         ext = file_path.suffix.lower()
+        stem = file_path.stem
+        filename = file_path.name
 
-        if ext != ".csv":
-            print("  ├─ Expected  : .csv")
-            print(f"  ├─ Actual    : {ext or '(none)'}")
+        print(
+            "  ├─ Expected  : "
+            "Supported data file"
+        )
+        print(f"  ├─ File Name : {filename}")
+        print(f"  ├─ File Stem : {stem}")
+        print(f"  ├─ Extension : {ext or '(none)'}")
+        print(
+            f"  ├─ Supported : "
+            f"{', '.join(sorted(SUPPORTED_EXTENSIONS))}"
+        )
+
+        if ext not in SUPPORTED_EXTENSIONS:
             print("  └─ Result    : FAIL")
 
             print()
             print(
                 f"[FAIL] Tahap 3 Gagal -> "
-                f"File '{dataset_name}' bukan CSV."
+                f"Format file '{dataset_name}' tidak didukung."
             )
 
             print("-" * 70)
@@ -187,25 +668,24 @@ def check_source_file(
             return {
                 "status": "FAIL",
                 "actual": ext,
-                "expected": ".csv",
+                "expected": sorted(SUPPORTED_EXTENSIONS),
                 "message": (
                     f"Source file '{dataset_name}' "
-                    f"harus format CSV: {file_path}"
+                    f"menggunakan format yang belum didukung: "
+                    f"{file_path}"
                 )
             }
 
-        print("  ├─ Expected  : .csv")
-        print(f"  ├─ Actual    : {ext}")
         print("  └─ Result    : PASS")
 
     except Exception as e:
+
         print("  ├─ Expected  : .csv")
         print(f"  ├─ Actual    : {type(e).__name__}")
         print("  └─ Result    : ERROR")
 
         print(
-            f"[ERROR] Tahap 3 Exception -> "
-            f"{str(e)}",
+            f"[ERROR] Tahap 3 Exception -> {str(e)}",
             file=sys.stderr
         )
 
@@ -225,24 +705,68 @@ def check_source_file(
 
     try:
         print()
-        print("[DEBUG] [4/4] File Integrity")
+        print("[DEBUG] [4/5] File Integrity")
 
         file_stat = file_path.stat()
 
         size_bytes = file_stat.st_size
         readable_size = _format_size(size_bytes)
+
+        modified = _format_timestamp(
+            file_stat.st_mtime
+        )
+
+        created = _format_timestamp(
+            file_stat.st_ctime
+        )
+
+        accessed = _format_timestamp(
+            file_stat.st_atime
+        )
+
         readable = file_path.stat().st_size > 0
 
-        modified = _format_timestamp(file_stat.st_mtime)
+        can_read = file_path.is_file()
+
+        can_write = False
+
+        try:
+            with open(
+                file_path,
+                "r",
+                encoding="utf-8-sig"
+            ):
+                can_read = True
+        except Exception:
+            can_read = False
+
+        try:
+            with open(
+                file_path,
+                "a",
+                encoding="utf-8"
+            ):
+                can_write = True
+        except Exception:
+            can_write = False
+
+        print(
+            f"  ├─ Size Bytes    : "
+            f"{size_bytes:,} Bytes"
+        )
+        print(
+            f"  ├─ Size Human    : "
+            f"{readable_size}"
+        )
+        print(f"  ├─ Non Empty     : {readable}")
+        print(f"  ├─ Readable      : {can_read}")
+        print(f"  ├─ Writable      : {can_write}")
+        print(f"  ├─ Created       : {created}")
+        print(f"  ├─ Modified      : {modified}")
+        print(f"  ├─ Last Access   : {accessed}")
 
         if size_bytes <= 0:
-            print(
-                f"  ├─ Size      : "
-                f"{size_bytes:,} Bytes ({readable_size})"
-            )
-            print(f"  ├─ Readable  : {readable}")
-            print(f"  ├─ Modified  : {modified}")
-            print("  └─ Result    : FAIL")
+            print("  └─ Result        : FAIL")
 
             print()
             print(
@@ -262,22 +786,41 @@ def check_source_file(
                 )
             }
 
-        print(
-            f"  ├─ Size      : "
-            f"{size_bytes:,} Bytes ({readable_size})"
-        )
-        print(f"  ├─ Readable  : {readable}")
-        print(f"  ├─ Modified  : {modified}")
-        print("  └─ Result    : PASS")
+        if not can_read:
+            print("  └─ Result        : FAIL")
+
+            print()
+            print(
+                f"[FAIL] Tahap 4 Gagal -> "
+                f"File '{dataset_name}' tidak dapat dibaca."
+            )
+
+            print("-" * 70)
+
+            return {
+                "status": "FAIL",
+                "actual": "file not readable",
+                "expected": "readable file",
+                "message": (
+                    f"Source file '{dataset_name}' "
+                    f"tidak dapat dibaca."
+                )
+            }
+
+        print("  └─ Result        : PASS")
 
     except Exception as e:
-        print("  ├─ Expected  : Valid readable file")
-        print(f"  ├─ Actual    : {type(e).__name__}")
+
+        print(
+            "  ├─ Expected  : Valid readable file"
+        )
+        print(
+            f"  ├─ Actual    : {type(e).__name__}"
+        )
         print("  └─ Result    : ERROR")
 
         print(
-            f"[ERROR] Tahap 4 Exception -> "
-            f"{str(e)}",
+            f"[ERROR] Tahap 4 Exception -> {str(e)}",
             file=sys.stderr
         )
 
@@ -292,6 +835,197 @@ def check_source_file(
         }
 
     # ================================================================
+    # 5. CSV STRUCTURE
+    # ================================================================
+
+    try:
+        print()
+        print("[DEBUG] [5/5] Data Structure")
+
+        file_metadata = _read_file_metadata(
+            file_path
+        )
+
+        delimiter = file_metadata["delimiter"]
+        has_header = file_metadata["has_header"]
+        columns = file_metadata["columns"]
+        column_count = file_metadata["column_count"]
+        row_count = file_metadata["row_count"]
+        empty_rows = file_metadata["empty_rows"]
+        inconsistent_rows = file_metadata[
+            "inconsistent_rows"
+        ]
+
+        print(
+            f"  ├─ Encoding        : "
+            f"{file_metadata['encoding']}"
+        )
+
+        delimiter_display = {
+            ",": "Comma (,)",
+            ";": "Semicolon (;)",
+            "\t": "Tab (\\t)",
+            "|": "Pipe (|)"
+        }.get(
+            delimiter,
+            repr(delimiter)
+        )
+
+        print(
+            f"  ├─ Delimiter       : "
+            f"{delimiter_display}"
+        )
+
+        print(
+            f"  ├─ Header          : "
+            f"{has_header}"
+        )
+
+        print(
+            f"  ├─ Column Count    : "
+            f"{column_count}"
+        )
+
+        print(
+            f"  ├─ Data Rows       : "
+            f"{row_count:,}"
+        )
+
+        print(
+            f"  ├─ Empty Rows      : "
+            f"{empty_rows:,}"
+        )
+
+        print(
+            f"  ├─ Inconsistent    : "
+            f"{inconsistent_rows:,}"
+        )
+
+        print()
+        print("  ├─ Columns:")
+
+        if columns:
+            for index, column in enumerate(
+                columns,
+                start=1
+            ):
+                connector = (
+                    "└─"
+                    if index == len(columns)
+                    else "├─"
+                )
+
+                print(
+                    f"  │  {connector} "
+                    f"{index:02d}. {column}"
+                )
+        else:
+            print("  │  └─ (no columns)")
+
+        if not has_header:
+            print()
+            print(
+                "  └─ Result          : FAIL"
+            )
+
+            return {
+                "status": "FAIL",
+                "actual": "Data file has no header",
+                "expected": "Data file with header",
+                "message": (
+                    f"Data file '{dataset_name}' "
+                    f"tidak memiliki header."
+                )
+            }
+
+        if column_count == 0:
+            print()
+            print(
+                "  └─ Result          : FAIL"
+            )
+
+            return {
+                "status": "FAIL",
+                "actual": 0,
+                "expected": "> 0 columns",
+                "message": (
+                    f"Data file '{dataset_name}' "
+                    f"tidak memiliki kolom."
+                )
+            }
+
+        if inconsistent_rows > 0:
+            print()
+            print(
+                "  └─ Result          : FAIL"
+            )
+
+            return {
+                "status": "FAIL",
+                "actual": inconsistent_rows,
+                "expected": 0,
+                "message": (
+                    f"CSV '{dataset_name}' memiliki "
+                    f"{inconsistent_rows} baris dengan "
+                    f"jumlah kolom tidak konsisten."
+                )
+            }
+
+        print()
+        print(
+            "  └─ Result          : PASS"
+        )
+
+    except UnicodeDecodeError as e:
+
+        print(
+            "  ├─ Expected        : Valid data file"
+        )
+        print(
+            f"  ├─ Actual          : {type(e).__name__}"
+        )
+        print(
+            "  └─ Result          : FAIL"
+        )
+
+        return {
+            "status": "FAIL",
+            "actual": "invalid encoding",
+            "expected": "valid data file",
+            "message": (
+                f"Data file '{dataset_name}' "
+                f"tidak menggunakan encoding UTF-8."
+            )
+        }
+
+    except Exception as e:
+
+        print(
+            "  ├─ Expected        : Valid CSV structure"
+        )
+        print(
+            f"  ├─ Actual          : {type(e).__name__}"
+        )
+        print(
+            "  └─ Result          : ERROR"
+        )
+
+        print(
+            f"[ERROR] Tahap 5 Exception -> {str(e)}",
+            file=sys.stderr
+        )
+
+        return {
+            "status": "ERROR",
+            "actual": type(e).__name__,
+            "expected": "successful CSV structure check",
+            "message": (
+                f"Gagal membaca struktur data "
+                f"{file_path}: {str(e)}"
+            )
+        }
+
+    # ================================================================
     # FINAL RESULT
     # ================================================================
 
@@ -300,19 +1034,118 @@ def check_source_file(
 
     print(
         f"[PASS] VALIDASI SUKSES: "
-        f"File '{dataset_name}' memenuhi seluruh kriteria."
+        f"File '{dataset_name}' memenuhi "
+        f"seluruh kriteria."
     )
 
     print("-" * 70)
 
+    # ================================================================
+    # VALIDATION SUMMARY
+    # ================================================================
+
     print()
     print("[DEBUG] Validation Summary:")
-    print(f"  ├─ Dataset     : {dataset_name}")
-    print(f"  ├─ File        : {file_path.name}")
-    print(f"  ├─ Type        : CSV / Regular File")
-    print(f"  ├─ Size        : {readable_size}")
-    print(f"  ├─ Readable    : {readable}")
-    print(f"  └─ Result      : 4/4 PASS")
+
+    print(
+        f"  ├─ Dataset          : "
+        f"{dataset_name}"
+    )
+
+    print(
+        f"  ├─ File             : "
+        f"{file_path.name}"
+    )
+
+    print(
+        f"  ├─ Absolute Path    : "
+        f"{file_path.resolve()}"
+    )
+
+    print(
+        f"  ├─ Type             : "
+        f"{file_path.suffix.upper().lstrip('.')} / Regular File"
+    )
+
+    print(
+        f"  ├─ Extension        : "
+        f"{ext}"
+    )
+
+    print(
+        f"  ├─ Size             : "
+        f"{readable_size}"
+    )
+
+    print(
+        f"  ├─ Size Bytes       : "
+        f"{size_bytes:,}"
+    )
+
+    print(
+        f"  ├─ Readable         : "
+        f"{can_read}"
+    )
+
+    print(
+        f"  ├─ Writable         : "
+        f"{can_write}"
+    )
+
+    print(
+        f"  ├─ Created          : "
+        f"{created}"
+    )
+
+    print(
+        f"  ├─ Modified         : "
+        f"{modified}"
+    )
+
+    print(
+        f"  ├─ Last Access      : "
+        f"{accessed}"
+    )
+
+    print(
+        f"  ├─ Encoding         : "
+        f"{file_metadata['encoding']}"
+    )
+
+    print(
+        f"  ├─ Delimiter        : "
+        f"{delimiter_display}"
+    )
+
+    print(
+        f"  ├─ Header           : "
+        f"{has_header}"
+    )
+
+    print(
+        f"  ├─ Column Count     : "
+        f"{column_count}"
+    )
+
+    print(
+        f"  ├─ Data Rows        : "
+        f"{row_count:,}"
+    )
+
+    print(
+        f"  ├─ Empty Rows       : "
+        f"{empty_rows:,}"
+    )
+
+    print(
+        f"  ├─ Inconsistent     : "
+        f"{inconsistent_rows:,}"
+    )
+
+    print(
+        f"  └─ Result           : "
+        f"5/5 PASS"
+    )
 
     print("=" * 70)
 
@@ -322,15 +1155,54 @@ def check_source_file(
 
     return {
         "status": "PASS",
+
         "actual": {
-            "path": str(file_path),
+            "path": str(file_path.resolve()),
             "file_name": file_path.name,
             "extension": ext,
-            "size_bytes": size_bytes,
-            "size_human": readable_size,
-            "readable": readable,
-            "modified_at": modified,
+
+            "file": {
+                "is_file": is_file,
+                "is_symlink": is_symlink,
+                "readable": can_read,
+                "writable": can_write,
+            },
+
+            "size": {
+                "bytes": size_bytes,
+                "human": readable_size,
+            },
+
+            "timestamp": {
+                "created_at": created,
+                "modified_at": modified,
+                "last_access_at": accessed,
+            },
+
+            "csv": {
+                "encoding": file_metadata["encoding"],
+                "delimiter": delimiter,
+                "has_header": has_header,
+                "column_count": column_count,
+                "columns": columns,
+                "row_count": row_count,
+                "empty_rows": empty_rows,
+                "inconsistent_rows": inconsistent_rows,
+            },
         },
-        "expected": "existing, readable, non-empty .csv file",
-        "message": f"Source file '{dataset_name}' valid.",
+
+        "expected": {
+            "file_exists": True,
+            "regular_file": True,
+            "extension": sorted(SUPPORTED_EXTENSIONS),
+            "readable": True,
+            "non_empty": True,
+            "has_header": True,
+            "column_count": "> 0",
+            "inconsistent_rows": 0,
+        },
+
+        "message": (
+            f"Source file '{dataset_name}' valid."
+        ),
     }
