@@ -662,7 +662,7 @@ def check_source_file(
         print()
 
         print(
-            "[DEBUG] [1/5] Check Existence"
+            "[DEBUG] Check Existence"
         )
 
         # ------------------------------------------------------------
@@ -787,7 +787,7 @@ def check_source_file(
         print()
 
         print(
-            "[DEBUG] [2/5] Check Data"
+            "[DEBUG] Check Data"
         )
 
         is_file = file_path.is_file()
@@ -1140,7 +1140,7 @@ def check_source_file(
         print()
 
         print(
-            "[DEBUG] [3/5] Check Extension / Format"
+            "[DEBUG] Check Extension / Format"
         )
 
         ext = file_path.suffix.lower()
@@ -1278,7 +1278,7 @@ def check_source_file(
         print()
 
         print(
-            "[DEBUG] [4/5] Check Integrity"
+            "[DEBUG] Check Integrity"
         )
 
         file_stat = file_path.stat()
@@ -1498,7 +1498,7 @@ def check_source_file(
         print()
 
         print(
-            "[DEBUG] [5/5] Check Structure"
+            "[DEBUG] Check Structure"
         )
 
         # ------------------------------------------------------------
