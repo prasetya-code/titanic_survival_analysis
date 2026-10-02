@@ -1,0 +1,116 @@
+columns:
+
+  PassengerId:
+    dtype: Int64
+    semantic_type: primary_key
+    nullable: false
+    required: true
+
+  Survived:
+    dtype: Int64
+    semantic_type: binary_target
+    allowed_values:
+      - 0
+      - 1
+    nullable: false
+    required: true
+
+  Pclass:
+    dtype: Int64
+    semantic_type: categorical
+    allowed_values:
+      - 1
+      - 2
+      - 3
+    nullable: false
+    required: true
+
+  Name:
+    dtype: String
+    semantic_type: text
+    nullable: false
+    required: true
+
+  Sex:
+    dtype: String
+    semantic_type: categorical
+    casing: lower
+    allowed_values:
+      - male
+      - female
+    nullable: false
+    required: true
+
+  Age:
+    dtype: Int64
+    semantic_type: numeric
+    min: 0
+    max: 100
+    max_null_ratio: 0.3
+    nullable: true
+    required: false
+
+  SibSp:
+    dtype: Int64
+    semantic_type: count
+    min: 0
+    nullable: false
+    required: true
+
+  Parch:
+    dtype: Int64
+    semantic_type: count
+    min: 0
+    nullable: false
+    required: true
+
+  Ticket:
+    dtype: String
+    semantic_type: identifier
+    nullable: false
+    required: true
+
+  Fare:
+    dtype: Float64
+    semantic_type: numeric
+    min: 0
+    max_null_ratio: 0.05
+    nullable: true
+    required: false
+
+  Cabin:
+    dtype: String
+    semantic_type: text
+    max_null_ratio: 0.9
+    nullable: true
+    required: false
+
+  Embarked:
+    dtype: String
+    semantic_type: categorical
+    casing: upper
+    allowed_values:
+      - C
+      - Q
+      - S
+    max_null_ratio: 0.05
+    nullable: true
+    required: false
+
+
+constraints:
+
+  unique:
+
+    - name: passenger_identity
+      # merujuk pada kolom di atas
+      columns:
+        - Name
+        - Sex
+        - Age
+
+    - name: ticket_group
+      # merujuk pada kolom di atas
+      columns:
+        - Ticket
+        - Pclass
