@@ -15,6 +15,131 @@
 
 ---
 
+```bash
+                    DATA INGESTION
+                          │
+             ┌────────────┴────────────┐
+             │                         │
+        File Source               Database Source
+             │                         │
+      CSV / JSON / Excel        PostgreSQL / MySQL
+             │                         │
+             └────────────┬────────────┘
+                          │
+                   Normalized Data
+                          │
+                 Data Validation
+                          │
+        ┌─────────────────┼─────────────────┐
+        │                 │                 │
+     Schema           Constraint        Quality
+```
+
+---
+
+```text
+apakah database dapat diakses?
+apakah database/schema/table ada?
+apakah table memiliki data?
+apakah kolom sesuai contract?
+apakah tipe data sesuai?
+apakah constraint terpenuhi?
+```
+
+---
+
+Untuk database, konsepnya bisa menjadi:
+
+```bash
+validation/
+│
+├── file/
+│   ├── existence/
+│   ├── accessibility/
+│   ├── file_type/
+│   ├── metadata/
+│   └── integrity/
+│
+├── database/
+│   ├── existence/
+│   ├── accessibility/
+│   ├── metadata/
+│   ├── schema/
+│   └── integrity/
+│
+└── common/
+    ├── schema/
+    ├── constraint/
+    ├── format/
+    └── quality/
+```
+
+---
+
+Perbedaannya kira-kira:
+
+| File           | Database                     |
+| -------------- | ---------------------------- |
+| path exists    | database connection exists   |
+| file exists    | database/schema/table exists |
+| target exists  | table/view exists            |
+| readable       | connection/query accessible  |
+| file type      | database/table type          |
+| file metadata  | table metadata               |
+| file integrity | data/table integrity         |
+| CSV columns    | table columns                |
+| CSV rows       | table rows                   |
+
+
+---
+
+```bash
+validation/
+│
+├── file/
+│   ├── existence/
+│   ├── accessibility/
+│   ├── file_type/
+│   ├── metadata/
+│   └── integrity/
+│
+├── database/
+│   ├── existence/
+│   ├── accessibility/
+│   ├── metadata/
+│   ├── schema/
+│   └── integrity/
+│
+└── common/
+    ├── schema/
+    ├── constraint/
+    ├── format/
+    └── quality/
+```
+
+---
+
+```bash
+                    SOURCE VALIDATOR
+                          │
+           ┌──────────────┴──────────────┐
+           │                             │
+      FILE VALIDATION              DATA VALIDATION
+           │                             │
+           │                             │
+     ┌─────┼─────┐                 ┌─────┼─────┐
+     │     │     │                 │     │     │
+ existence access type          structure schema constraint
+     │     │     │
+     └─────┴─────┘
+           │
+       metadata
+           │
+       integrity
+```
+
+---
+
 # framework ingestion/validation yang reusable
 
 ```bash
