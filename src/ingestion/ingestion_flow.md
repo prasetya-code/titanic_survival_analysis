@@ -140,11 +140,9 @@ validation/
 
 ---
 
-# framework ingestion/validation yang reusable
+# framework file ingestion yang reusable
 
 ```bash
-ingestion/
-│
 ├── 1. source/
 │   │
 │   ├── existence/
@@ -179,7 +177,11 @@ ingestion/
 │       ├── openable
 │       ├── truncated
 │       └── corrupted
-│
+```
+
+---
+
+```bash
 ├── 2. fingerprint/
 │   │
 │   ├── file_hash/
@@ -206,7 +208,11 @@ ingestion/
 │       ├── file_hash
 │       ├── schema_hash
 │       └── identity
-│
+```
+
+---
+
+```bash
 ├── 3. format/
 │   │
 │   ├── encoding/
@@ -238,7 +244,11 @@ ingestion/
 │       ├── parse_errors
 │       ├── malformed_records
 │       └── parser_warnings
-│
+```
+
+---
+
+```bash
 ├── 4. structure/
 │   │
 │   ├── header/
@@ -274,7 +284,11 @@ ingestion/
 │       ├── malformed_ratio
 │       ├── inconsistent_count
 │       └── max_allowed_malformed
-│
+```
+
+---
+
+```bash
 ├── 5. schema/
 │   │
 │   ├── existence/
@@ -311,7 +325,11 @@ ingestion/
 │       ├── invalid_values
 │       ├── invalid_count
 │       └── invalid_ratio
-│
+```
+
+---
+
+```bash
 ├── 6. constraint/
 │   │
 │   ├── primary_key/
@@ -359,7 +377,11 @@ ingestion/
 │       ├── severity
 │       ├── violation_count
 │       └── violation_ratio
-│
+```
+
+---
+
+```bash
 └── 7. quality/
    │
    ├── completeness/
