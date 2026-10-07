@@ -6,7 +6,7 @@ Constraint merupakan aturan yang digunakan untuk memastikan data memenuhi kondis
 
 Secara umum pipeline:
 
-```text
+```bash
 Raw Data
    │
    ▼
@@ -255,7 +255,7 @@ if null_ratio > 0.3:
 
 Perbedaannya:
 
-```text
+```bash
 nullable
     ↓
 Apakah null diperbolehkan?
@@ -286,7 +286,7 @@ constraints:
 
 Misalnya:
 
-```text
+```bash
 ticket      pclass
 ------------------
 A/5 21171      3
@@ -298,7 +298,7 @@ Valid.
 
 Tetapi:
 
-```text
+```bash
 ticket      pclass
 ------------------
 PC 17599       1
@@ -326,7 +326,7 @@ Digunakan ketika terdapat beberapa dataset yang saling berhubungan.
 
 Contoh:
 
-```text
+```bash
 customer.csv
 
 customer_id
@@ -338,7 +338,7 @@ customer_id
 
 Kemudian:
 
-```text
+```bash
 transaction.csv
 
 customer_id
@@ -392,7 +392,7 @@ constraints:
 
 Secara logika:
 
-```text
+```bash
 IF passenger_type == "adult"
 THEN age != null
 ```
@@ -414,7 +414,7 @@ Cross-field constraint digunakan untuk memvalidasi hubungan antar beberapa kolom
 
 Contoh:
 
-```text
+```bash
 quantity
 price
 total
@@ -422,7 +422,7 @@ total
 
 Rule:
 
-```text
+```bash
 total = quantity × price
 ```
 
@@ -454,7 +454,7 @@ Pattern digunakan untuk memvalidasi format string.
 
 Contoh:
 
-```text
+```bash
 ID-00001
 ID-00002
 ID-00003
@@ -503,7 +503,7 @@ constraints:
 
 Misalnya data memiliki:
 
-```text
+```bash
 male
 female
 unknown
@@ -535,7 +535,7 @@ Namun sebaiknya YAML tidak digunakan sebagai bahasa pemrograman penuh.
 
 Jika rule sudah kompleks, lebih baik:
 
-```text
+```bash
 constraints.yaml
        │
        ▼
@@ -562,7 +562,7 @@ Data dianggap tidak valid apabila aturan dilanggar.
 
 Contoh:
 
-```text
+```bash
 Primary Key
 Required Column
 Data Type
@@ -572,7 +572,7 @@ Referential Integrity
 
 Pipeline:
 
-```text
+```bash
 Violation
     ↓
 FAIL
@@ -586,7 +586,7 @@ Data masih dapat diterima, tetapi menghasilkan warning.
 
 Contoh:
 
-```text
+```bash
 Null Ratio
 Range tertentu
 Cardinality
@@ -595,7 +595,7 @@ Data Quality Threshold
 
 Pipeline:
 
-```text
+```bash
 Violation
     ↓
 WARNING
@@ -609,7 +609,7 @@ Digunakan untuk mengamati perubahan karakteristik data.
 
 Contoh:
 
-```text
+```bash
 Mean
 Median
 Standard Deviation
@@ -649,7 +649,7 @@ Contoh:
 
 Baseline kemudian digunakan sebagai referensi untuk data berikutnya.
 
-```text
+```bash
 Baseline
    │
    ▼
@@ -669,7 +669,7 @@ Drift Detection
 
 Untuk project ini:
 
-```text
+```bash
 project/
 │
 ├── data/
@@ -733,7 +733,7 @@ columns:
 
   name:
     dtype: String
-    semantic_type: text
+    semantic_type: bash
     nullable: false
     required: true
 
@@ -826,7 +826,7 @@ constraints:
 
 Constraint validation sebaiknya dilakukan **sebelum data masuk ke proses training**.
 
-```text
+```bash
                   RAW DATA
                      │
                      ▼
@@ -856,7 +856,7 @@ Constraint validation sebaiknya dilakukan **sebelum data masuk ke proses trainin
 
 Baseline kemudian digunakan untuk monitoring:
 
-```text
+```bash
                 BASELINE
              profile.json
                    │
@@ -880,7 +880,7 @@ Baseline kemudian digunakan untuk monitoring:
 
 Struktur data contract dapat diringkas menjadi:
 
-```text
+```bash
 Schema
   ↓
 "Data harus memiliki bentuk seperti apa?"
