@@ -14,10 +14,12 @@ PROJECT_ROOT = Path.cwd()
 # Dataset metadata & paths
 DATASET_NAME = "titanic"
 
+# Directory
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 METADATA_DIR = PROJECT_ROOT / "metadata"
 BASELINE_DIR = PROJECT_ROOT / "baseline"
 
+# File
 INPUT_FILE_PATH = RAW_DATA_DIR / "train.csv"
 SCHEMA_FILE_PATH = METADATA_DIR / "schema_contract.yaml"
 OUTPUT_FILE_PATH = BASELINE_DIR / "titanic_baseline_profile.json"
