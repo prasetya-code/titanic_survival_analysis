@@ -16,7 +16,7 @@ from .schema_hash import (
 )
 
 from .dataset_identity import (
-    build_dataset_identity,
+    calculate_dataset_identity,
     validate_dataset_identity,
 )
 
@@ -37,6 +37,6 @@ __all__ = [
     "validate_schema_hash",
 
     # dataset identity
-    "build_dataset_identity",
+    "calculate_dataset_identity",
     "validate_dataset_identity",
 ]

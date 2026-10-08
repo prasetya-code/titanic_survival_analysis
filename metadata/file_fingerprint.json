@@ -1,0 +1,12 @@
+{
+    "train": {
+        "file_name": "train.csv",
+        "file_path": "D:\\GIT DATA\\titanic_survival_analysis\\data\\raw\\train.csv",
+        "file_hash": "7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f"
+    },
+    "test": {
+        "file_name": "test.csv",
+        "file_path": "D:\\GIT DATA\\titanic_survival_analysis\\data\\raw\\test.csv",
+        "file_hash": "56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2"
+    }
+}

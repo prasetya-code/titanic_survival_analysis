@@ -1,1 +1,0 @@
-dir ini hanya berisi output validation dan schema blueprint

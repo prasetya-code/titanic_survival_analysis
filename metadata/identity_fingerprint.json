@@ -1,0 +1,22 @@
+{
+    "train": {
+        "dataset_name": "train",
+        "source_name": "titanic",
+        "source_version": "v1",
+        "file_name": "train.csv",
+        "file_hash": "7d118fef8b6ccf7f81111877bc388536f7b1e498a655e3d649d19aaa010e9f6f",
+        "schema_hash": "1fbfa163ce84a244614e798069b1a307fcf41ace37d1c588c32f2ec351b24ff3",
+        "file_path": "D:\\GIT DATA\\titanic_survival_analysis\\data\\raw\\train.csv",
+        "identity": "4ebf2ced633ee74a5dce756179f821b031f08500abc5ae49c29990de84173784"
+    },
+    "test": {
+        "dataset_name": "test",
+        "source_name": "titanic",
+        "source_version": "v1",
+        "file_name": "test.csv",
+        "file_hash": "56023b9948236f3c7a1c9448fcf418b283e109ef177fa8c7e069158dd7dd52b2",
+        "schema_hash": "cb28dd89ae1622529ab35055912093d7702ee201277b2392e30f3e19ab59c9ff",
+        "file_path": "D:\\GIT DATA\\titanic_survival_analysis\\data\\raw\\test.csv",
+        "identity": "3719b8f7e61e466d1b1188e82bbeac486ca8cc963a2e4285db6dc2e526905d3f"
+    }
+}
