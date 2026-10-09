@@ -8,3 +8,4 @@ win_env
 # Data
 data/stage
 baseline
+metadata/**.json
