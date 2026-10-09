@@ -1,5 +1,3 @@
-from .result_source import ValidationResult
-
 from .existence import (
     check_path_exists,
     check_file_exists,
@@ -40,8 +38,6 @@ from .integrity import (
 
 
 __all__ = [
-    "ValidationResult",
-
     # existence
     "check_path_exists",
     "check_file_exists",

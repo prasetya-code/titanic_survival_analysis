@@ -1,28 +1,16 @@
+from config import *
+from datetime import datetime
+
 import csv
 import json
 import math
-from datetime import datetime
-from pathlib import Path
 import yaml
 
-# ==========================================================
-# PATH & CONFIGURATION SETUP
-# ==========================================================
-# Root dir project menggunakan Current Working Directory (CWD)
-PROJECT_ROOT = Path.cwd()
-
-# Dataset metadata & paths
-DATASET_NAME = "titanic"
-
-# Directory
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
-METADATA_DIR = PROJECT_ROOT / "metadata"
-BASELINE_DIR = PROJECT_ROOT / "baseline"
 
 # File
-INPUT_FILE_PATH = RAW_DATA_DIR / "train.csv"
-SCHEMA_FILE_PATH = METADATA_DIR / "schema_contract.yaml"
-OUTPUT_FILE_PATH = BASELINE_DIR / "titanic_baseline_profile.json"
+INPUT_FILE = TRAIN_RAW
+SCHEMA_FILE = SCHEMA_CONTRACT
+OUTPUT_FILE = BASELINE_PROFILE
 
 
 def _is_null(value):
@@ -52,27 +40,27 @@ def create_baseline_profile():
         # --------------------------------------------------
         # 1. Debug project location & setup parameters
         # --------------------------------------------------
-        print(f"[DEBUG] PROJECT_ROOT (CWD) : {PROJECT_ROOT}")
-        print(f"[DEBUG] Dataset Name       : {DATASET_NAME}")
-        print(f"[DEBUG] Input File         : {INPUT_FILE_PATH}")
-        print(f"[DEBUG] Schema File        : {SCHEMA_FILE_PATH}")
-        print(f"[DEBUG] Output File        : {OUTPUT_FILE_PATH}")
+        print(f"[DEBUG] ROOT_PROJECT (CWD) : {ROOT_PROJECT}")
+        print(f"[DEBUG] Dataset Name       : {PROJECT_NAME}")
+        print(f"[DEBUG] Input File         : {INPUT_FILE}")
+        print(f"[DEBUG] Schema File        : {SCHEMA_FILE}")
+        print(f"[DEBUG] Output File        : {OUTPUT_FILE}")
 
         # --------------------------------------------------
         # 2. Read Schema from YAML file
         # --------------------------------------------------
         print("[INFO] Checking schema YAML file existence...")
 
-        if not SCHEMA_FILE_PATH.exists():
+        if not SCHEMA_FILE.exists():
 
             raise FileNotFoundError(
-                f"Schema YAML file not found: {SCHEMA_FILE_PATH}"
+                f"Schema YAML file not found: {SCHEMA_FILE}"
             )
 
         print("[INFO] Loading schema from YAML file...")
 
         with open(
-            SCHEMA_FILE_PATH,
+            SCHEMA_FILE,
             "r",
             encoding="utf-8",
         ) as yaml_file:
@@ -95,16 +83,16 @@ def create_baseline_profile():
         # --------------------------------------------------
         print("[INFO] Checking input file existence...")
 
-        if not INPUT_FILE_PATH.exists():
+        if not INPUT_FILE.exists():
 
             raise FileNotFoundError(
-                f"CSV input file not found: {INPUT_FILE_PATH}"
+                f"CSV input file not found: {INPUT_FILE}"
             )
 
         print("[INFO] Reading CSV file...")
 
         with open(
-            INPUT_FILE_PATH,
+            INPUT_FILE,
             "r",
             encoding="utf-8-sig",
             newline="",
@@ -127,9 +115,9 @@ def create_baseline_profile():
         # 4. Initialize dataset profile
         # --------------------------------------------------
         profile = {
-            "dataset": DATASET_NAME,
-            "source_file": str(INPUT_FILE_PATH),
-            "schema_file": str(SCHEMA_FILE_PATH),
+            "dataset": PROJECT_NAME,
+            "source_file": str(INPUT_FILE),
+            "schema_file": str(SCHEMA_FILE),
             "created_at": datetime.now().isoformat(),
             "row_count": len(rows),
             "column_count": len(fieldnames),
@@ -337,7 +325,7 @@ def create_baseline_profile():
         print("=" * 60)
         print("[INFO] Creating output directory if needed...")
 
-        OUTPUT_FILE_PATH.parent.mkdir(
+        OUTPUT_FILE.parent.mkdir(
             parents=True,
             exist_ok=True,
         )
@@ -345,7 +333,7 @@ def create_baseline_profile():
         print("[INFO] Saving baseline profile...")
 
         with open(
-            OUTPUT_FILE_PATH,
+            OUTPUT_FILE,
             "w",
             encoding="utf-8",
         ) as file:
@@ -357,7 +345,7 @@ def create_baseline_profile():
                 ensure_ascii=False,
             )
 
-        print(f"[SUCCESS] Profile saved to: {OUTPUT_FILE_PATH}")
+        print(f"[SUCCESS] Profile saved to: {OUTPUT_FILE}")
 
         # --------------------------------------------------
         # 7. Final Result Summary
@@ -366,10 +354,10 @@ def create_baseline_profile():
         print("SUCCESS: Baseline profiling completed.")
         print("=" * 60)
 
-        print(f"[SUCCESS] Dataset   : {DATASET_NAME}")
+        print(f"[SUCCESS] Dataset   : {PROJECT_NAME}")
         print(f"[SUCCESS] Rows      : {len(rows)}")
         print(f"[SUCCESS] Columns   : {len(fieldnames)}")
-        print(f"[SUCCESS] Output    : {OUTPUT_FILE_PATH}")
+        print(f"[SUCCESS] Output    : {OUTPUT_FILE}")
 
         return {
             "status": "PASS",

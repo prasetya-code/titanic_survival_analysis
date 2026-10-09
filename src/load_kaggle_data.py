@@ -1,12 +1,8 @@
-from pathlib import Path
+from config import *
+
 import zipfile
 import subprocess
 
-# root dir project ~
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-
-# raw data dir
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 
 def download_titanic_data():
 
@@ -18,25 +14,25 @@ def download_titanic_data():
         # --------------------------------------------------
         # 1. Debug project location
         # --------------------------------------------------
-        print(f"[DEBUG] PROJECT_ROOT : {PROJECT_ROOT}")
-        print(f"[DEBUG] RAW_DATA_DIR : {RAW_DATA_DIR}")
+        print(f"[DEBUG] PROJECT_ROOT    : {ROOT_PROJECT}")
+        print(f"[DEBUG] RAW_DIR         : {RAW_DIR}")
 
         # --------------------------------------------------
         # 2. Create raw data directory
         # --------------------------------------------------
         print("[INFO] Creating raw data directory...")
 
-        RAW_DATA_DIR.mkdir(
+        RAW_DIR.mkdir(
             parents=True,
             exist_ok=True
         )
 
-        print(f"[DEBUG] Directory exists: {RAW_DATA_DIR.exists()}")
+        print(f"[DEBUG] Directory exists: {RAW_DIR.exists()}")
 
         # --------------------------------------------------
         # 3. Define ZIP path
         # --------------------------------------------------
-        zip_path = RAW_DATA_DIR / "titanic.zip"
+        zip_path = RAW_DIR / "titanic.zip"
 
         print(f"[DEBUG] Expected ZIP path: {zip_path}")
 
@@ -66,7 +62,7 @@ def download_titanic_data():
             "-c",
             "titanic",
             "-p",
-            str(RAW_DATA_DIR)
+            str(RAW_DIR)
         ]
 
         print("[DEBUG] Kaggle command:")
@@ -108,7 +104,7 @@ def download_titanic_data():
             for file_name in zip_ref.namelist():
                 print(f"\t - {file_name}")
 
-            zip_ref.extractall(RAW_DATA_DIR)
+            zip_ref.extractall(RAW_DIR)
 
         print("[SUCCESS] Dataset extraction completed.")
 
@@ -123,7 +119,7 @@ def download_titanic_data():
         # --------------------------------------------------
         print("[INFO] Files in raw data directory:")
 
-        for file_path in RAW_DATA_DIR.iterdir():
+        for file_path in RAW_DIR.iterdir():
             print(f"    - {file_path.name}")
 
         print("=" * 60)
