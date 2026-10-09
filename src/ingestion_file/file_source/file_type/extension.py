@@ -1,38 +1,53 @@
 from pathlib import Path
-
-from ..result_source import ValidationResult
-
-
-SUPPORTED_EXTENSIONS = {
-    ".csv": "CSV",
-    ".tsv": "TSV",
-    ".txt": "TXT",
-    ".json": "JSON",
-    ".jsonl": "JSONL",
-    ".xlsx": "Excel",
-    ".parquet": "Parquet",
-}
+from src.config import INGESTION_SUPP_EXT
+from src.ingestion_file import ValidationResult
 
 
 def check_extension(path: Path) -> ValidationResult:
+    # Memastikan input dikonversi menjadi objek Path
     path = Path(path)
 
-    extension = path.suffix.lower()
+    try:
+        # Mengambil ekstensi file dalam huruf kecil
+        extension = path.suffix.lower()
 
-    supported = extension in SUPPORTED_EXTENSIONS
+        # Memeriksa apakah ekstensi didukung berdasarkan kamus SUPPORTED_EXTENSIONS
+        supported = extension in INGESTION_SUPP_EXT
+        format_name = INGESTION_SUPP_EXT.get(extension)
 
-    format_name = SUPPORTED_EXTENSIONS.get(extension)
+        # Menentukan pesan deskriptif berdasarkan status dukungan ekstensi
+        if supported:
+            message = f"File '{path}' has a supported extension '{extension}' ({format_name})."
+        elif not extension:
+            message = f"File '{path}' has no file extension."
+        else:
+            message = f"File '{path}' has an unsupported extension '{extension}'."
 
-    return ValidationResult(
-        name = "extension",
-        status = "PASS" if supported else "FAIL",
-        actual = extension or None,
-        expected = list(SUPPORTED_EXTENSIONS.keys()),
-        message = (f"Supported file extension: {extension}" if supported else f"Unsupported file extension: {extension or '[none]'}"),
-        details = {
-            "path": str(path),
-            "extension": extension,
-            "format": format_name,
-            "supported": supported
-        }
-    )
+        # Mengembalikan hasil validasi ekstensi
+        return ValidationResult(
+            name = "extension",
+            status = "PASS" if supported else "FAIL",
+            actual = extension or None,
+            expected = list(INGESTION_SUPP_EXT.keys()),
+            message = message,
+            details = {
+                "path": str(path),
+                "extension": extension or None,
+                "format": format_name,
+                "supported": supported
+            }
+        )
+
+    except Exception as error:
+        # Menangani exception tak terduga (misal: penanganan objek path yang tidak valid)
+        return ValidationResult(
+            name = "extension",
+            status = "FAIL",
+            actual = None,
+            expected = list(INGESTION_SUPP_EXT.keys()),
+            message = f"Failed to check file extension for '{path}': {error}",
+            details = {
+                "path": str(path),
+                "error": str(error)
+            }
+        )

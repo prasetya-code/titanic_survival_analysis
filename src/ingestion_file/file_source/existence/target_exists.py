@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ..result_source import ValidationResult
+from src.ingestion_file import ValidationResult
 
 
 def check_target_exists(path: Path) -> ValidationResult:

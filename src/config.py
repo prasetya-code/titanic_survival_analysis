@@ -49,6 +49,21 @@ BASELINE_PROFILE = BASELINE_STORE / f"{PROJECT_NAME}_baseline_profile{BASELINE_F
 
 
 # ====================================================
+# Source Code
+# ====================================================
+
+INGESTION_SUPP_EXT = {
+    ".csv": "CSV",
+    ".tsv": "TSV",
+    ".txt": "TXT",
+    ".json": "JSON",
+    ".jsonl": "JSONL",
+    ".xlsx": "Excel",
+    ".parquet": "Parquet",
+}
+
+
+# ====================================================
 # INGESTION PROCESS
 # ====================================================
 

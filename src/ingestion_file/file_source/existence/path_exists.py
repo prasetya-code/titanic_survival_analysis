@@ -1,7 +1,7 @@
 from pathlib import Path
 
-# from ..result_source import ValidationResult
 from src.ingestion_file import ValidationResult
+
 
 def check_path_exists(path: Path) -> ValidationResult:
     # Memastikan input dikonversi menjadi objek Path
