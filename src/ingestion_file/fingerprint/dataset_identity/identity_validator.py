@@ -2,11 +2,11 @@ from pathlib import Path
 import hashlib
 import json
 
-from ..config import HASH_ALGORITHM
+from src.config import HASH_ALGORITHM
 
 from ..result_fingerprint import ValidationResult
 
-from ..file_hash.file_validator import get_stored_file_hash
+from ..file_hash.file_checker import get_or_create_stored_hash
 from ..schema_hash.schema_validator import get_stored_schema_hash
 
 

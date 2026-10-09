@@ -1,10 +1,9 @@
-from .file_validator import (
-    calculate_file_hash,
-    validate_file_hash,
-)
-
+# from .file_checker import create_file_hash
+from .file_validate import validate_file_hash
+# from .z import calculate_file_hash, validate_file_hash
 
 __all__ = [
-    "calculate_file_hash",
+    # "create_file_hash",
     "validate_file_hash",
+    # "calculate_file_hash"
 ]

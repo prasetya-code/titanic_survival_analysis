@@ -2,25 +2,10 @@ from pathlib import Path
 import hashlib
 import json
 
-from ..config import HASH_ALGORITHM
+from src.config import HASH_ALGORITHM, SCHEMA_FINGERPRINT_FILE
 
 from ..result_fingerprint import ValidationResult
 
-
-# ============================================================
-# Configuration
-# ============================================================
-
-# Root dir project menggunakan Current Working Directory (CWD)
-PROJECT_ROOT = Path.cwd().parent
-
-# Directory
-METADATA_DIR = PROJECT_ROOT / "metadata"
-
-# File (SCHEMA_FINGERPRINT_FILE)
-SCHEMA_FINGERPRINT_FILE = (
-    METADATA_DIR / "schema_fingerprint.json"
-)
 
 
 # ============================================================
